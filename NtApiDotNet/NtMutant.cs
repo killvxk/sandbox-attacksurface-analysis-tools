@@ -12,61 +12,36 @@
 //  See the License for the specific language governing permissions and
 //  limitations under the License.
 
-using System;
 using System.Runtime.InteropServices;
 
 namespace NtApiDotNet
 {
-#pragma warning disable 1591
-    [Flags]
-    public enum MutantAccessRights : uint
-    {
-        None = 0,
-        QueryState = 1,
-        GenericRead = GenericAccessRights.GenericRead,
-        GenericWrite = GenericAccessRights.GenericWrite,
-        GenericExecute = GenericAccessRights.GenericExecute,
-        GenericAll = GenericAccessRights.GenericAll,
-        Delete = GenericAccessRights.Delete,
-        ReadControl = GenericAccessRights.ReadControl,
-        WriteDac = GenericAccessRights.WriteDac,
-        WriteOwner = GenericAccessRights.WriteOwner,
-        Synchronize = GenericAccessRights.Synchronize,
-        MaximumAllowed = GenericAccessRights.MaximumAllowed,
-        AccessSystemSecurity = GenericAccessRights.AccessSystemSecurity
-    }
-
-    public enum MutantInformationClass
-    {
-        MutantBasicInformation,
-        MutantOwnerInformation
-    }
-
-    public static partial class NtSystemCalls
-    {
-        [DllImport("ntdll.dll")]
-        public static extern NtStatus NtCreateMutant(out SafeKernelObjectHandle MutantHandle, MutantAccessRights DesiredAccess, 
-            ObjectAttributes ObjectAttributes, bool InitialOwner);
-
-        [DllImport("ntdll.dll")]
-        public static extern NtStatus NtOpenMutant(out SafeKernelObjectHandle MutantHandle, MutantAccessRights DesiredAccess, 
-            ObjectAttributes ObjectAttributes);
-
-        [DllImport("ntdll.dll")]
-        public static extern NtStatus NtReleaseMutant(SafeKernelObjectHandle MutantHandle, out uint PreviousState);
-    }
-#pragma warning restore 1591
-
     /// <summary>
     /// Class representing a NT Mutant object
     /// </summary>
     [NtType("Mutant")]
-    public class NtMutant : NtObjectWithDuplicate<NtMutant, MutantAccessRights>
+    public class NtMutant : NtObjectWithDuplicateAndInfo<NtMutant, MutantAccessRights, MutantInformationClass, MutantInformationClass>
     {
+        #region Constructors
         internal NtMutant(SafeKernelObjectHandle handle) : base(handle)
         {
         }
 
+        internal sealed class NtTypeFactoryImpl : NtTypeFactoryImplBase
+        {
+            public NtTypeFactoryImpl() : base(true)
+            {
+            }
+
+            protected override sealed NtResult<NtMutant> OpenInternal(ObjectAttributes obj_attributes,
+                MutantAccessRights desired_access, bool throw_on_error)
+            {
+                return NtMutant.Open(obj_attributes, desired_access, throw_on_error);
+            }
+        }
+        #endregion
+
+        #region Static Methods
         /// <summary>
         /// Create a new mutant
         /// </summary>
@@ -93,8 +68,7 @@ namespace NtApiDotNet
         /// <exception cref="NtException">Thrown on error</exception>
         public static NtMutant Create(ObjectAttributes object_attributes, bool initial_owner, MutantAccessRights desired_access)
         {
-            SafeKernelObjectHandle handle;
-            NtSystemCalls.NtCreateMutant(out handle, desired_access, object_attributes, initial_owner).ToNtException();
+            NtSystemCalls.NtCreateMutant(out SafeKernelObjectHandle handle, desired_access, object_attributes, initial_owner).ToNtException();
             return new NtMutant(handle);
         }
 
@@ -108,8 +82,7 @@ namespace NtApiDotNet
         /// <returns>The NT status code and object result.</returns>
         public static NtResult<NtMutant> Create(ObjectAttributes object_attributes, bool initial_owner, MutantAccessRights desired_access, bool throw_on_error)
         {
-            SafeKernelObjectHandle handle;
-            return NtSystemCalls.NtCreateMutant(out handle, desired_access, object_attributes, initial_owner).CreateResult(throw_on_error, () => new NtMutant(handle));
+            return NtSystemCalls.NtCreateMutant(out SafeKernelObjectHandle handle, desired_access, object_attributes, initial_owner).CreateResult(throw_on_error, () => new NtMutant(handle));
         }
 
         /// <summary>
@@ -149,8 +122,7 @@ namespace NtApiDotNet
         /// <exception cref="NtException">Thrown on error</exception>
         public static NtMutant Open(ObjectAttributes object_attributes, MutantAccessRights desired_access)
         {
-            SafeKernelObjectHandle handle;
-            NtSystemCalls.NtOpenMutant(out handle, desired_access, object_attributes).ToNtException();
+            NtSystemCalls.NtOpenMutant(out SafeKernelObjectHandle handle, desired_access, object_attributes).ToNtException();
             return new NtMutant(handle);
         }
 
@@ -163,24 +135,62 @@ namespace NtApiDotNet
         /// <returns>The NT status code and object result.</returns>
         public static NtResult<NtMutant> Open(ObjectAttributes object_attributes, MutantAccessRights desired_access, bool throw_on_error)
         {
-            SafeKernelObjectHandle handle;
-            return NtSystemCalls.NtOpenMutant(out handle, desired_access, object_attributes).CreateResult(throw_on_error, () => new NtMutant(handle));
+            return NtSystemCalls.NtOpenMutant(out SafeKernelObjectHandle handle, desired_access, object_attributes).CreateResult(throw_on_error, () => new NtMutant(handle));
         }
+        #endregion
 
-        internal static NtResult<NtObject> FromName(ObjectAttributes object_attributes, AccessMask desired_access, bool throw_on_error)
+        #region Public Methods
+        /// <summary>
+        /// Release the mutant
+        /// </summary>
+        /// <param name="throw_on_error">True to throw on error.</param>
+        /// <returns>The previous release count</returns>
+        public NtResult<int> Release(bool throw_on_error)
         {
-            return Open(object_attributes, desired_access.ToSpecificAccess<MutantAccessRights>(), throw_on_error).Cast<NtObject>();
+            return NtSystemCalls.NtReleaseMutant(Handle, out int ret).CreateResult(throw_on_error, () => ret);
         }
 
         /// <summary>
         /// Release the mutant
         /// </summary>
         /// <returns>The previous release count</returns>
-        public uint Release()
+        public int Release()
         {
-            uint ret = 0;
-            NtSystemCalls.NtReleaseMutant(Handle, out ret).ToNtException();
-            return ret;
+            return Release(true).Result;
         }
+
+        /// <summary>
+        /// Method to query information for this object type.
+        /// </summary>
+        /// <param name="info_class">The information class.</param>
+        /// <param name="buffer">The buffer to return data in.</param>
+        /// <param name="return_length">Return length from the query.</param>
+        /// <returns>The NT status code for the query.</returns>
+        public override NtStatus QueryInformation(MutantInformationClass info_class, SafeBuffer buffer, out int return_length)
+        {
+            return NtSystemCalls.NtQueryMutant(Handle, info_class, buffer, buffer.GetLength(), out return_length);
+        }
+        #endregion
+
+        #region Public Properties
+
+        /// <summary>
+        /// Get the owner of the mutant.
+        /// </summary>
+        public ClientId Owner => new ClientId(Query<MutantOwnerInformation>(MutantInformationClass.MutantOwnerInformation).ClientId);
+        /// <summary>
+        /// Get current count.
+        /// </summary>
+        public int CurrentCount => Query<MutantBasicInformation>(MutantInformationClass.MutantBasicInformation).CurrentCount;
+        /// <summary>
+        /// Get wether mutant owned by current thread.
+        /// </summary>
+        public bool OwnedByCaller => Query<MutantBasicInformation>(MutantInformationClass.MutantBasicInformation).OwnedByCaller != 0;
+        /// <summary>
+        /// Get whether mutant is abandoned.
+        /// </summary>
+        public bool AbandonedState => Query<MutantBasicInformation>(MutantInformationClass.MutantBasicInformation).AbandonedState != 0;
+
+        #endregion
     }
 }

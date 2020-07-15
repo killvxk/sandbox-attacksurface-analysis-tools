@@ -12,63 +12,36 @@
 //  See the License for the specific language governing permissions and
 //  limitations under the License.
 
-using System;
 using System.Runtime.InteropServices;
 
 namespace NtApiDotNet
 {
-#pragma warning disable 1591
-    [Flags]
-    public enum SymbolicLinkAccessRights : uint
-    {
-        Query = 1,        
-        GenericRead = GenericAccessRights.GenericRead,
-        GenericWrite = GenericAccessRights.GenericWrite,
-        GenericExecute = GenericAccessRights.GenericExecute,
-        GenericAll = GenericAccessRights.GenericAll,
-        Delete = GenericAccessRights.Delete,
-        ReadControl = GenericAccessRights.ReadControl,
-        WriteDac = GenericAccessRights.WriteDac,
-        WriteOwner = GenericAccessRights.WriteOwner,
-        Synchronize = GenericAccessRights.Synchronize,
-        MaximumAllowed = GenericAccessRights.MaximumAllowed,
-    }
-
-    public static partial class NtSystemCalls
-    {
-        [DllImport("ntdll.dll")]
-        public static extern NtStatus NtCreateSymbolicLinkObject(
-            out SafeKernelObjectHandle LinkHandle,
-            SymbolicLinkAccessRights DesiredAccess,
-            ObjectAttributes ObjectAttributes,
-            UnicodeString DestinationName
-        );
-
-        [DllImport("ntdll.dll")]
-        public static extern NtStatus NtOpenSymbolicLinkObject(
-            out SafeKernelObjectHandle LinkHandle,
-            SymbolicLinkAccessRights DesiredAccess,
-            ObjectAttributes ObjectAttributes
-        );
-
-        [DllImport("ntdll.dll")]
-        public static extern NtStatus NtQuerySymbolicLinkObject(
-            SafeHandle LinkHandle,
-            [In, Out] UnicodeStringAllocated LinkTarget,
-            out int ReturnedLength
-        );
-    }
-#pragma warning restore 1591
-
     /// <summary>
     /// Class representing a NT SymbolicLink object
     /// </summary>
     [NtType("SymbolicLink")]
-    public class NtSymbolicLink : NtObjectWithDuplicate<NtSymbolicLink, SymbolicLinkAccessRights>
+    public class NtSymbolicLink : NtObjectWithDuplicateAndInfo<NtSymbolicLink, SymbolicLinkAccessRights, SymbolicLinkInformationClass, SymbolicLinkInformationClass>
     {
+        #region Constructors
         internal NtSymbolicLink(SafeKernelObjectHandle handle) : base(handle)
         {
         }
+
+        internal sealed class NtTypeFactoryImpl : NtTypeFactoryImplBase
+        {
+            public NtTypeFactoryImpl() : base(true)
+            {
+            }
+
+            protected override sealed NtResult<NtSymbolicLink> OpenInternal(ObjectAttributes obj_attributes,
+                SymbolicLinkAccessRights desired_access, bool throw_on_error)
+            {
+                return NtSymbolicLink.Open(obj_attributes, desired_access, throw_on_error);
+            }
+        }
+        #endregion
+
+        #region Static Methods
 
         /// <summary>
         /// Create a symbolic link object.
@@ -96,8 +69,7 @@ namespace NtApiDotNet
         /// <returns>The NT status code and object result.</returns>
         public static NtResult<NtSymbolicLink> Create(ObjectAttributes object_attributes, SymbolicLinkAccessRights desired_access, string target, bool throw_on_error)
         {
-            SafeKernelObjectHandle handle;
-            return NtSystemCalls.NtCreateSymbolicLinkObject(out handle,
+            return NtSystemCalls.NtCreateSymbolicLinkObject(out SafeKernelObjectHandle handle,
                 desired_access, object_attributes, new UnicodeString(target)).CreateResult(throw_on_error, () => new NtSymbolicLink(handle));
         }
 
@@ -145,9 +117,23 @@ namespace NtApiDotNet
         /// <returns>The opened object</returns>
         public static NtSymbolicLink Open(string path, NtObject root, SymbolicLinkAccessRights desired_access)
         {
+            return Open(path, root, desired_access, true).Result;
+        }
+
+        /// <summary>
+        /// Open a symbolic link object.
+        /// </summary>
+        /// <param name="path">The path to the object</param>
+        /// <param name="root">The root if path is relative</param>
+        /// <param name="desired_access">The desired access for the object</param>
+        /// <param name="throw_on_error">True to throw on error.</param>
+        /// <returns>The opened object</returns>
+        public static NtResult<NtSymbolicLink> Open(string path, NtObject root, 
+            SymbolicLinkAccessRights desired_access, bool throw_on_error)
+        {
             using (ObjectAttributes obja = new ObjectAttributes(path, AttributeFlags.CaseInsensitive, root))
             {
-                return Open(obja, desired_access);
+                return Open(obja, desired_access, throw_on_error);
             }
         }
 
@@ -160,14 +146,8 @@ namespace NtApiDotNet
         /// <returns>The NT status code and object result.</returns>
         public static NtResult<NtSymbolicLink> Open(ObjectAttributes object_attributes, SymbolicLinkAccessRights desired_access, bool throw_on_error)
         {
-            SafeKernelObjectHandle handle;
-            return NtSystemCalls.NtOpenSymbolicLinkObject(out handle,
+            return NtSystemCalls.NtOpenSymbolicLinkObject(out SafeKernelObjectHandle handle,
                 desired_access, object_attributes).CreateResult(throw_on_error, () => new NtSymbolicLink(handle));
-        }
-
-        internal static NtResult<NtObject> FromName(ObjectAttributes object_attributes, AccessMask desired_access, bool throw_on_error)
-        {
-            return Open(object_attributes, desired_access.ToSpecificAccess<SymbolicLinkAccessRights>(), throw_on_error).Cast<NtObject>();
         }
 
         /// <summary>
@@ -202,20 +182,85 @@ namespace NtApiDotNet
             return Open(path, null);
         }
 
+        #endregion
+
+        #region Public Properties
         /// <summary>
         /// Get the symbolic link target.
         /// </summary>
-        public string Target
+        public string Target => GetTarget(true).Result;
+        #endregion
+
+        #region Public Methods
+
+        /// <summary>
+        /// Method to set information for this object type.
+        /// </summary>
+        /// <param name="info_class">The information class.</param>
+        /// <param name="buffer">The buffer to set data from.</param>
+        /// <returns>The NT status code for the set.</returns>
+        public override NtStatus SetInformation(SymbolicLinkInformationClass info_class, SafeBuffer buffer)
         {
-            get
+            return NtSystemCalls.NtSetInformationSymbolicLink(Handle, info_class, buffer, buffer.GetLength());
+        }
+
+        /// <summary>
+        /// Set access mask filter.
+        /// </summary>
+        /// <param name="access_mask">The access mask to set.</param>
+        /// <param name="throw_on_error">True to throw on error.</param>
+        /// <returns>The NT status code.</returns>
+        /// <remarks>Needs SeTcbPrivilege.</remarks>
+        public NtStatus SetAccessMask(AccessMask access_mask, bool throw_on_error)
+        {
+            return Set(SymbolicLinkInformationClass.SymbolicLinkAccessMask, 
+                access_mask.Access, throw_on_error);
+        }
+
+        /// <summary>
+        /// Set access mask filter.
+        /// </summary>
+        /// <param name="access_mask">The access mask to set.</param>
+        /// <remarks>Needs SeTcbPrivilege.</remarks>
+        public void SetAccessMask(AccessMask access_mask)
+        {
+            SetAccessMask(access_mask, true);
+        }
+
+        /// <summary>
+        /// Set as a global link.
+        /// </summary>
+        /// <param name="throw_on_error">True to throw on error.</param>
+        /// <returns>The NT status code.</returns>
+        /// <remarks>Needs SeTcbPrivilege.</remarks>
+        public NtStatus SetGlobalLink(bool throw_on_error)
+        {
+            return Set(SymbolicLinkInformationClass.SymbolicLinkGlobalInformation, 1, throw_on_error);
+        }
+
+        /// <summary>
+        /// Set as a global link.
+        /// </summary>
+        /// <remarks>Needs SeTcbPrivilege.</remarks>
+        public void SetGlobalLink()
+        {
+            SetGlobalLink(true);
+        }
+
+        /// <summary>
+        /// Get the symbolic link target path.
+        /// </summary>
+        /// <param name="throw_on_error">True to throw on error.</param>
+        /// <returns>The target path.</returns>
+        public NtResult<string> GetTarget(bool throw_on_error)
+        {
+            using (UnicodeStringAllocated ustr = new UnicodeStringAllocated())
             {
-                using (UnicodeStringAllocated ustr = new UnicodeStringAllocated())
-                {
-                    int return_length;
-                    NtSystemCalls.NtQuerySymbolicLinkObject(Handle, ustr, out return_length).ToNtException();
-                    return ustr.ToString();
-                }
+                return NtSystemCalls.NtQuerySymbolicLinkObject(Handle, ustr,
+                    out int return_length).CreateResult(throw_on_error, () => ustr.ToString());
             }
         }
+
+        #endregion
     }
 }

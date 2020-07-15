@@ -15,6 +15,8 @@
 using NtApiDotNet;
 using NtApiDotNet.Forms;
 using NtApiDotNet.Win32;
+using NtApiDotNet.Win32.DirectoryService;
+using NtApiDotNet.Win32.Security.Audit;
 using System;
 using System.Windows.Forms;
 
@@ -22,10 +24,6 @@ namespace ViewSecurityDescriptor
 {
     static class Program
     {
-        private static void RunForm(Form form)
-        {
-        }
-
         /// <summary>
         /// The main entry point for the application.
         /// </summary>
@@ -39,7 +37,7 @@ namespace ViewSecurityDescriptor
             {
                 if (args.Length == 0)
                 {
-                    MessageBox.Show("Usage: ViewSecurityDescriptor.exe (handle [--readonly]|Name SDDL NtType)", "Usage", MessageBoxButtons.OK, MessageBoxIcon.Exclamation);
+                    MessageBox.Show("Usage: ViewSecurityDescriptor.exe (handle [--readonly]|Name (SDDL|-B64) NtType [Container])", "Usage", MessageBoxButtons.OK, MessageBoxIcon.Exclamation);
                 }
                 else
                 {
@@ -49,21 +47,42 @@ namespace ViewSecurityDescriptor
                         bool read_only = args.Length > 1 ? args[1].Equals("--readonly") : false;
                         using (var obj = NtGeneric.FromHandle(handle))
                         {
-                            Application.Run(new SecurityDescriptorViewerForm(obj, read_only));
+                            Application.Run(new SecurityDescriptorViewerForm(obj.ToTypedObject(), read_only));
                         }
                     }
                     else
                     {
-                        SecurityDescriptor sd = new SecurityDescriptor(args[1]);
-                        NtType type = NtType.GetTypeByName(args[2], false);
-                        if (type == null)
+                        NtType type = null;
+                        if (args[2].Equals("DirectoryService", StringComparison.OrdinalIgnoreCase))
                         {
-                            throw new ArgumentException($"Unknown NT type {args[2]}");
+                            type = DirectoryServiceUtils.NtType;
+                        }
+                        else if (args[2].Equals("Audit", StringComparison.OrdinalIgnoreCase))
+                        {
+                            type = AuditSecurityUtils.NtType;
+                        }
+                        else
+                        {
+                            type = ServiceUtils.GetServiceNtType(args[2]) ?? new NtType(args[2]);
+                        }
+                        SecurityDescriptor sd;
+                        if (args[1].StartsWith("-"))
+                        {
+                            sd = new SecurityDescriptor(Convert.FromBase64String(args[1].Substring(1)));
+                        }
+                        else
+                        {
+                            sd = new SecurityDescriptor(args[1]);
                         }
 
-                        Application.Run(new SecurityDescriptorViewerForm(args[0], sd, type));
+                        bool container = false;
+                        if (args.Length > 3)
+                        {
+                            container = bool.Parse(args[3]);
+                        }
+
+                        Application.Run(new SecurityDescriptorViewerForm(args[0], sd, type, container));
                     }
-                    
                 }
             }
             catch (Exception ex)

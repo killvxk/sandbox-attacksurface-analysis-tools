@@ -28,9 +28,17 @@ namespace NtApiDotNet
         /// </summary>
         None = 0,
         /// <summary>
+        /// Handle is protected from closing.
+        /// </summary>
+        ProtectClose = 0x00000001,
+        /// <summary>
         /// The handle created can be inherited
         /// </summary>
         Inherit = 0x00000002,
+        /// <summary>
+        /// Audit handle close.
+        /// </summary>
+        AuditObjectClose = 0x00000004,
         /// <summary>
         /// The object created is marked as permanent
         /// </summary>
@@ -75,12 +83,12 @@ namespace NtApiDotNet
     [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
     public sealed class ObjectAttributes : IDisposable
     {
-        int Length;
-        SafeKernelObjectHandle RootDirectory;
-        SafeBuffer ObjectName;
-        AttributeFlags Attributes;
-        SafeBuffer SecurityDescriptor;
-        SafeBuffer SecurityQualityOfService;
+        private readonly int Length;
+        private readonly SafeKernelObjectHandle RootDirectory;
+        private readonly SafeBuffer ObjectName;
+        private readonly AttributeFlags Attributes;
+        private readonly SafeBuffer SecurityDescriptor;
+        private readonly SafeBuffer SecurityQualityOfService;
 
         /// <summary>
         /// Constructor. Sets flags to None
@@ -115,7 +123,7 @@ namespace NtApiDotNet
         /// </summary>
         /// <param name="attributes">Attribute flags</param>
         public ObjectAttributes(AttributeFlags attributes) 
-            : this(null, attributes, SafeKernelObjectHandle.Null, null, null)
+            : this(SafeHGlobalBuffer.Null, attributes, SafeKernelObjectHandle.Null, null, null)
         {
         }
 
@@ -123,7 +131,65 @@ namespace NtApiDotNet
         /// Constructor
         /// </summary>
         /// <param name="object_name">The name of the object</param>
-        public ObjectAttributes(string object_name) : this(object_name, AttributeFlags.CaseInsensitive, SafeKernelObjectHandle.Null, null, null)
+        public ObjectAttributes(string object_name) 
+            : this(object_name, AttributeFlags.CaseInsensitive, SafeKernelObjectHandle.Null, null, null)
+        {
+        }
+
+        private ObjectAttributes(SafeBuffer object_name, AttributeFlags attributes, SafeKernelObjectHandle root,
+            SecurityQualityOfService sqos, SecurityDescriptor security_descriptor)
+        {
+            try
+            {
+                if (root == null)
+                    throw new ArgumentNullException(nameof(root), "Use SafeKernelObjectHandle.Null for a null handle");
+                Length = Marshal.SizeOf(this);
+                ObjectName = object_name;
+                Attributes = attributes;
+                if (sqos != null)
+                {
+                    SecurityQualityOfService = sqos.ToBuffer();
+                }
+                else
+                {
+                    SecurityQualityOfService = SafeHGlobalBuffer.Null;
+                }
+
+                RootDirectory = !root.IsInvalid ? NtObject.DuplicateHandle(root) : SafeKernelObjectHandle.Null;
+                if (security_descriptor != null)
+                {
+                    SecurityDescriptor = security_descriptor.ToSafeBuffer();
+                }
+                else
+                {
+                    SecurityDescriptor = SafeHGlobalBuffer.Null;
+                }
+            }
+            catch
+            {
+                Dispose();
+                throw;
+            }
+        }
+
+        private ObjectAttributes(byte[] object_name, AttributeFlags attributes, SafeKernelObjectHandle root,
+            SecurityQualityOfService sqos, SecurityDescriptor security_descriptor) 
+            : this(new UnicodeStringBytesSafeBuffer(object_name), attributes, root, sqos, security_descriptor)
+        {
+        }
+
+        /// <summary>
+        /// Constructor
+        /// </summary>
+        /// <param name="object_id">An object ID.</param>
+        /// <param name="attributes">The object attribute flags.</param>
+        /// <param name="root">An optional root handle, can be SafeKernelObjectHandle.Null. Will duplicate the handle.</param>
+        /// <param name="sqos">An optional security quality of service.</param>
+        /// <param name="security_descriptor">An optional security descriptor.</param>
+        public ObjectAttributes(long object_id, AttributeFlags attributes, SafeKernelObjectHandle root,
+            SecurityQualityOfService sqos, SecurityDescriptor security_descriptor) 
+            : this(BitConverter.GetBytes(object_id), 
+                  attributes, root, sqos, security_descriptor)
         {
         }
 
@@ -136,37 +202,10 @@ namespace NtApiDotNet
         /// <param name="sqos">An optional security quality of service.</param>
         /// <param name="security_descriptor">An optional security descriptor.</param>
         public ObjectAttributes(string object_name, AttributeFlags attributes, SafeKernelObjectHandle root, 
-            SecurityQualityOfService sqos, SecurityDescriptor security_descriptor)
+            SecurityQualityOfService sqos, SecurityDescriptor security_descriptor) 
+            : this(object_name != null ? new UnicodeString(object_name).ToBuffer() : SafeHGlobalBuffer.Null,
+                  attributes, root, sqos, security_descriptor)
         {
-            Length = Marshal.SizeOf(this);
-            if (object_name != null)
-            {
-                ObjectName = new UnicodeString(object_name).ToBuffer();
-            }
-            else
-            {
-                ObjectName = SafeHGlobalBuffer.Null;
-            }
-
-            Attributes = attributes;
-            if (sqos != null)
-            {
-                SecurityQualityOfService = sqos.ToBuffer();
-            }
-            else
-            {
-                SecurityQualityOfService = SafeHGlobalBuffer.Null; 
-            }
-
-            RootDirectory = !root.IsInvalid ? NtObject.DuplicateHandle(root) : SafeKernelObjectHandle.Null;
-            if (security_descriptor != null)
-            {
-                SecurityDescriptor = security_descriptor.ToSafeBuffer();
-            }
-            else
-            {
-                SecurityDescriptor = SafeHGlobalBuffer.Null;
-            }
         }
 
         /// <summary>
@@ -174,12 +213,12 @@ namespace NtApiDotNet
         /// </summary>
         /// <param name="object_name">The object name, can be null.</param>
         /// <param name="attributes">The object attribute flags.</param>
-        /// <param name="root">An optional root handle, can be SafeKernelObjectHandle.Null. Will duplicate the handle.</param>
+        /// <param name="root">An optional root handle, Will duplicate the handle.</param>
         /// <param name="sqos">An optional security quality of service.</param>
         /// <param name="security_descriptor">An optional security descriptor.</param>
         public ObjectAttributes(string object_name, AttributeFlags attributes, NtObject root, 
             SecurityQualityOfService sqos, SecurityDescriptor security_descriptor) 
-            : this(object_name, attributes, root != null ? root.Handle : SafeKernelObjectHandle.Null, sqos, security_descriptor)
+            : this(object_name, attributes, root?.Handle ?? SafeKernelObjectHandle.Null, sqos, security_descriptor)
         {
         }
 

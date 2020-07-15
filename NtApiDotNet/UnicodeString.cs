@@ -12,8 +12,10 @@
 //  See the License for the specific language governing permissions and
 //  limitations under the License.
 
+using NtApiDotNet.Utilities.Memory;
 using System;
 using System.Runtime.InteropServices;
+using System.Text;
 
 namespace NtApiDotNet
 {
@@ -42,13 +44,49 @@ namespace NtApiDotNet
             MaximumLength = 0;
             Buffer = null;
         }
+
+        public override string ToString()
+        {
+            return Buffer;
+        }
+    }
+
+    /// <summary>
+    /// Standard ANSI_STRING class
+    /// </summary>
+    [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Ansi)]
+    public sealed class AnsiString
+    {
+        private readonly ushort Length;
+        private readonly ushort MaximumLength;
+        [MarshalAs(UnmanagedType.LPStr)]
+        private readonly string Buffer;
+
+        public AnsiString(string str)
+        {
+            Length = (ushort)str.Length;
+            MaximumLength = (ushort)(str.Length + 1);
+            Buffer = str;
+        }
+
+        public AnsiString()
+        {
+            Length = 0;
+            MaximumLength = 0;
+            Buffer = null;
+        }
+
+        public override string ToString()
+        {
+            return Buffer;
+        }
     }
 
     /// <summary>
     /// This class is used when the UNICODE_STRING is an output parameter.
     /// The allocatation of the buffer is handled elsewhere.
     /// </summary>
-    [StructLayout(LayoutKind.Sequential)]
+    [StructLayout(LayoutKind.Sequential), CrossBitnessType(typeof(UnicodeStringOut32))]
     public struct UnicodeStringOut
     {
         public ushort Length;
@@ -58,7 +96,39 @@ namespace NtApiDotNet
         {
             if (Buffer != IntPtr.Zero)
                 return Marshal.PtrToStringUni(Buffer, Length / 2);
-            return String.Empty;
+            return string.Empty;
+        }
+
+        internal string ToString(NtProcess process)
+        {
+            if (Length == 0 || Buffer == IntPtr.Zero)
+            {
+                return string.Empty;
+            }
+
+            return Encoding.Unicode.GetString(process.ReadMemory(Buffer.ToInt64(), Length, true));
+        }
+    }
+
+    /// <summary>
+    /// This class is used when the UNICODE_STRING is an output parameter.
+    /// The allocatation of the buffer is handled elsewhere.
+    /// </summary>
+    [StructLayout(LayoutKind.Sequential)]
+    internal struct UnicodeStringOut32 : IConvertToNative<UnicodeStringOut>
+    {
+        public ushort Length;
+        public ushort MaximumLength;
+        public IntPtr32 Buffer;
+
+        public UnicodeStringOut Convert()
+        {
+            return new UnicodeStringOut
+            {
+                Length = Length,
+                MaximumLength = MaximumLength,
+                Buffer = Buffer.Convert()
+            };
         }
     }
 
@@ -71,6 +141,14 @@ namespace NtApiDotNet
         ushort MaximumLength;
         [MarshalAs(UnmanagedType.LPWStr)]
         string Buffer;
+
+        public UnicodeStringIn(string str)
+        {
+            Length = 0;
+            MaximumLength = 0;
+            Buffer = null;
+            SetString(str);
+        }
 
         public void SetString(string str)
         {
@@ -104,11 +182,18 @@ namespace NtApiDotNet
         {
         }
 
+        public UnicodeStringAllocated(string str)
+        {
+            String.Length = (ushort)(str.Length * 2);
+            String.MaximumLength = (ushort)(String.Length + 2);
+            String.Buffer = Marshal.StringToHGlobalUni(str);
+        }
+
         public const int MaxStringLength = ushort.MaxValue - 1;
 
         public override string ToString()
         {
-            return String.ToString();        
+            return String.ToString();
         }
 
         private void DisposeUnmanaged()
@@ -119,7 +204,7 @@ namespace NtApiDotNet
                 String.Buffer = IntPtr.Zero;
             }
         }
-        
+
         public void Dispose()
         {
             DisposeUnmanaged();
@@ -136,6 +221,26 @@ namespace NtApiDotNet
     {
         [DllImport("ntdll.dll")]
         public static extern void RtlFreeUnicodeString([In, Out] ref UnicodeStringOut UnicodeString);
+
+        [DllImport("ntdll.dll", CharSet = CharSet.Unicode)]
+        public static extern char RtlUpcaseUnicodeChar(char SourceCharacter);
+
+        [DllImport("ntdll.dll", CharSet = CharSet.Unicode)]
+        public static extern NtStatus RtlUpcaseUnicodeString(
+            ref UnicodeStringOut DestinationString,
+            UnicodeString SourceString,
+            bool AllocateDestinationString
+        );
+
+        [DllImport("ntdll.dll", CharSet = CharSet.Unicode)]
+        public static extern char RtlDowncaseUnicodeChar(char SourceCharacter);
+
+        [DllImport("ntdll.dll", CharSet = CharSet.Unicode)]
+        public static extern NtStatus RtlDowncaseUnicodeString(
+            ref UnicodeStringOut DestinationString,
+            UnicodeString SourceString,
+            bool AllocateDestinationString
+        );
     }
 #pragma warning restore 1591
 }

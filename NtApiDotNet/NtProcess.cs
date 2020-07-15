@@ -12,906 +12,22 @@
 //  See the License for the specific language governing permissions and
 //  limitations under the License.
 
+using NtApiDotNet.Win32;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.InteropServices;
+using System.Text;
 
 namespace NtApiDotNet
 {
-#pragma warning disable 1591
-    [Flags]
-    public enum ProcessAccessRights : uint
-    {
-        None = 0,
-        Terminate = 0x0001,
-        CreateThread = 0x0002,
-        SetSessionId = 0x0004,
-        VmOperation = 0x0008,
-        VmRead = 0x0010,
-        VmWrite = 0x0020,
-        DupHandle = 0x0040,
-        CreateProcess = 0x0080,
-        SetQuota = 0x0100,
-        SetInformation = 0x0200,
-        QueryInformation = 0x0400,
-        SuspendResume = 0x0800,
-        QueryLimitedInformation = 0x1000,
-        SetLimitedInformation = 0x2000,
-        AllAccess = 0x1FFFFF,
-        GenericRead = GenericAccessRights.GenericRead,
-        GenericWrite = GenericAccessRights.GenericWrite,
-        GenericExecute = GenericAccessRights.GenericExecute,
-        GenericAll = GenericAccessRights.GenericAll,
-        Delete = GenericAccessRights.Delete,
-        ReadControl = GenericAccessRights.ReadControl,
-        WriteDac = GenericAccessRights.WriteDac,
-        WriteOwner = GenericAccessRights.WriteOwner,
-        Synchronize = GenericAccessRights.Synchronize,
-        MaximumAllowed = GenericAccessRights.MaximumAllowed,
-        AccessSystemSecurity = GenericAccessRights.AccessSystemSecurity
-    };
-
-    public enum ProcessCreateState
-    {
-        InitialState,
-        FailOnFileOpen,
-        FailOnSectionCreate,
-        FailExeFormat,
-        FailMachineMismatch,
-        FailExeName,
-        Success,
-    };
-
-    public enum ProcessCreateStateSuccessOutputFlags : uint
-    {
-        ProtectedProcess = 1,
-        AddressSpaceOverride = 2,
-        DevOverrideEnabled = 4,
-        ManifestDetected = 8,
-        ProtectedProcessLight = 16,
-    }
-
-    [StructLayout(LayoutKind.Sequential)]
-    public struct ProcessCreateStateSuccessData
-    {
-        public ProcessCreateStateSuccessOutputFlags OutputFlags;
-        public IntPtr FileHandle;
-        public IntPtr SectionHandle;
-        public ulong UserProcessParametersNative;
-        public uint UserProcessParametersWow64;
-        public uint CurrentParameterFlags;
-        public ulong PebAddressNative;
-        public uint PebAddressWow64;
-        public ulong ManifestAddress;
-        public uint ManifestSize;
-    }
-
-    [Flags]
-    public enum ProcessCreateInitFlag : ushort
-    {
-        None = 0,
-        WriteOutputOnExit = 1,
-        DetectManifest = 2,
-        IFEOSkipDebugger = 4,
-        IFEODoNotPropagateKeyState = 8,
-    }
-
-    [StructLayout(LayoutKind.Explicit)]
-    public struct ProcessCreateInfoData
-    {
-        // InitialState
-        [FieldOffset(0)]
-        public ProcessCreateInitFlag InitFlags;
-        [FieldOffset(2)]
-        public ImageCharacteristics ProhibitedImageCharacteristics;
-        [FieldOffset(4)]
-        public FileAccessRights AdditionalFileAccess;
-        // FailOnSectionCreate
-        [FieldOffset(0)]
-        public IntPtr FileHandle;
-        // FailExeFormat
-        [FieldOffset(0)]
-        public ushort DllCharacteristics;
-        // FailExeName
-        [FieldOffset(0)]
-        public IntPtr IFEOKey;
-        // Success
-        [FieldOffset(0)]
-        public ProcessCreateStateSuccessData Success;
-    }
-
-    [StructLayout(LayoutKind.Sequential)]
-    public class ProcessCreateInfo
-    {
-        IntPtr Size;
-        public ProcessCreateState State;
-        public ProcessCreateInfoData Data;
-
-        public ProcessCreateInfo()
-        {
-            Size = new IntPtr(Marshal.SizeOf(this));
-            State = ProcessCreateState.InitialState;
-        }
-    }
-
-    [StructLayout(LayoutKind.Sequential)]
-    public struct RtlDriveLetterCurDir
-    {
-        public ushort Flags;
-        public ushort Length;
-        public uint TimeStamp;
-        public UnicodeStringOut DosPath;
-    }
-
-    [StructLayout(LayoutKind.Sequential)]
-    public class RtlUserProcessParameters
-    {
-        public uint MaximumLength;
-        public uint Length;
-        public uint Flags;
-        public uint DebugFlags;
-        public IntPtr ConsoleHandle;
-        public uint ConsoleFlags;
-        public IntPtr StdInputHandle;
-        public IntPtr StdOutputHandle;
-        public IntPtr StdErrorHandle;
-        public UnicodeStringOut CurrentDirectoryPath;
-        public IntPtr CurrentDirectoryHandle;
-        public UnicodeStringOut DllPath;
-        public UnicodeStringOut ImagePathName;
-        public UnicodeStringOut CommandLine;
-        public IntPtr Environment;
-        public uint StartingPositionLeft;
-        public uint StartingPositionTop;
-        public uint Width;
-        public uint Height;
-        public uint CharWidth;
-        public uint CharHeight;
-        public uint ConsoleTextAttributes;
-        public uint WindowFlags;
-        public uint ShowWindowFlags;
-        public UnicodeStringOut WindowTitle;
-        public UnicodeStringOut DesktopName;
-        public UnicodeStringOut ShellInfo;
-        public UnicodeStringOut RuntimeData;
-        [MarshalAs(UnmanagedType.ByValArray, SizeConst = 0x20)]
-        public RtlDriveLetterCurDir[] DLCurrentDirectory;
-    }
-
-    [Flags]
-    public enum SectionImageFlags : byte
-    {
-        ComPlusNativeReady = 1,
-        ComPlusILOnly = 2,
-        ImageDynamicallyRelocated = 4,
-        ImageMappedFlat = 8,
-        BaseBelow4gb = 16,
-        ComPlusPrefer32bit = 32
-    }
-
-    [StructLayout(LayoutKind.Sequential)]
-    public class SectionImageInformation
-    {
-        public IntPtr TransferAddress;
-        public uint ZeroBits;
-        public IntPtr MaximumStackSize;
-        public IntPtr CommittedStackSize;
-        public uint SubSystemType;
-        public ushort SubSystemMinorVersion;
-        public ushort SubSystemMajorVersion;
-        public uint GpValue;
-        public ushort ImageCharacteristics;
-        public ushort DllCharacteristics;
-        public ushort Machine;
-        [MarshalAs(UnmanagedType.U1)]
-        public bool ImageContainsCode;
-        [MarshalAs(UnmanagedType.U1)]
-        public SectionImageFlags ImageFlags;
-        public uint LoaderFlags;
-        public uint ImageFileSize;
-        public uint CheckSum;
-    };
-
-    public enum PsProtectedType
-    {
-        None,
-        ProtectedLight,
-        Protected,
-    }
-
-    public enum PsProtectedSigner
-    {
-        None,
-        Authenticode,
-        CodeGen,
-        Antimalware,
-        Lsa,
-        Windows,
-        WinTcb,
-        System,
-        App
-    }
-
-    [StructLayout(LayoutKind.Sequential)]
-    public class PsProtection
-    {
-        private byte level;
-
-        public PsProtection(PsProtectedType type, PsProtectedSigner signer, bool audit)
-        {
-            level = (byte)((int)type | (audit ? 0x8 : 0) | ((int)signer << 4));
-        }
-
-        public PsProtection()
-        {
-        }
-
-        public PsProtectedType Type { get { return (PsProtectedType)(level & 0x7); } }
-        public bool Audit { get { return (level & 0x8) == 0x8; } }
-        public PsProtectedSigner Signer { get { return (PsProtectedSigner)(level >> 4); } }
-        public byte Level { get { return level; } }
-    }
-
-    [StructLayout(LayoutKind.Sequential)]
-    public struct ProcessAttributeNative
-    {
-        public uint Attribute;
-        public IntPtr Size;
-        public IntPtr ValuePtr;
-        public IntPtr ReturnLength;
-
-        public ProcessAttributeNative(uint attribute, IntPtr valueptr, IntPtr size, IntPtr return_length)
-        {
-            Attribute = attribute;
-            ValuePtr = valueptr;
-            Size = size;
-            ReturnLength = return_length;
-        }
-    }
-
-    public enum ProcessAttributeNum
-    {
-        ParentProcess, // in HANDLE
-        DebugPort, // in HANDLE
-        Token, // in HANDLE
-        ClientId, // out PCLIENT_ID
-        TebAddress, // out PTEB *
-        ImageName, // in PWSTR
-        ImageInfo, // out PSECTION_IMAGE_INFORMATION
-        MemoryReserve, // in PPS_MEMORY_RESERVE
-        PriorityClass, // in UCHAR
-        ErrorMode, // in ULONG
-        StdHandleInfo, // 10, in PPS_STD_HANDLE_INFO
-        HandleList, // in PHANDLE
-        GroupAffinity, // in PGROUP_AFFINITY
-        PreferredNode, // in PUSHORT
-        IdealProcessor, // in PPROCESSOR_NUMBER
-        UmsThread, // ? in PUMS_CREATE_THREAD_ATTRIBUTES
-        MitigationOptions, // in UCHAR
-        ProtectionLevel,
-        Unknown18,
-        JobList,
-        ChildProcess, // since THRESHOLD
-    }
-
-    [Flags]
-    public enum ProcessCreateFlags
-    {
-        None = 0,
-        BreakawayJob = 0x00000001,    // Only allowed if job allows breakaway
-        NoDebugInherit = 0x00000002,
-        InheritHandles = 0x00000004,
-        OverrideAddressSpace = 0x00000008,
-        LargePages = 0x00000010,
-        LargePagesSystemDll = 0x00000020,
-        ProtectedProcess = 0x00000040,
-        CreateSession = 0x00000080,
-        InheritFromParent = 0x00000100,
-        TerminateOnAbnormalExit = 0x200,
-        ForceBreakawayJob = 0x400,     // Needs TCB
-                                       // This is same as ForceBreakawayJob prior to Anniversary Edition
-        MinimalProcess = 0x800,        // Needs Kernel Privileges
-        IgnoreSectionObject = 0x1000,
-        MinimalProcessFlag1 = 0x2000,
-        MinimalProcessFlag2 = 0x4000,
-        AuxiliaryProcess = 0x8000,     // Needs TCB
-    }
-
-    [Flags]
-    public enum ThreadCreateFlags
-    {
-        None = 0,
-        Suspended = 0x00000001,
-        SkipThreadAttach = 0x00000002,
-        HideFromDebugger = 0x00000004,
-        HasSecurityDescriptor = 0x00000010,
-        AccessCheckInTarget = 0x00000020,
-        InitialThread = 0x00000080,
-    }
-
-    [StructLayout(LayoutKind.Sequential)]
-    public struct ProcessBasicInformation
-    {
-        public int ExitStatus;
-        public IntPtr PebBaseAddress;
-        public IntPtr AffinityMask;
-        public int BasePriority;
-        public IntPtr UniqueProcessId;
-        public IntPtr InheritedFromUniqueProcessId;
-    }
-
-    [Flags]
-    public enum ProcessExtendedBasicInformationFlags
-    {
-        None = 0,
-        IsProtectedProcess = 0x00000001,
-        IsWow64Process = 0x00000002,
-        IsProcessDeleting = 0x00000004,
-        IsCrossSessionCreate = 0x00000008,
-        IsFrozen = 0x00000010,
-        IsBackground = 0x00000020,
-        IsStronglyNamed = 0x00000040,
-        IsSecureProcess = 0x00000080,
-        IsSubsystemProcess = 0x00000100,
-    }
-
-    [StructLayout(LayoutKind.Sequential)]
-    public class ProcessExtendedBasicInformation
-    {
-        public IntPtr Size;
-        public ProcessBasicInformation BasicInfo;
-        public ProcessExtendedBasicInformationFlags Flags;
-
-        public ProcessExtendedBasicInformation()
-        {
-            Size = new IntPtr(Marshal.SizeOf(this));
-        }
-    }
-
-    [StructLayout(LayoutKind.Sequential)]
-    public class ProcessSessionInformation
-    {
-        public int SessionId;
-    }
-
-    [StructLayout(LayoutKind.Sequential), DataStart("WindowTitle")]
-    public class ProcessWindowInformation
-    {
-        public uint WindowFlags;
-        public ushort WindowTitleLength;
-        public char WindowTitle;
-    }
-
-    [StructLayout(LayoutKind.Sequential)]
-    public class ProcessChildProcessRestricted
-    {
-        public byte IsNoChildProcessRestricted;
-        public byte EnableAutomaticOverride;
-    }
-
-    [StructLayout(LayoutKind.Sequential)]
-    public class ProcessChildProcessRestricted1709
-    {
-        public byte IsNoChildProcessRestricted;
-        public byte EnableAutomaticOverride;
-        public byte Unknown2;
-    }
-
-    public enum ProcessSubsystemInformationType
-    {
-        Win32 = 0,
-        WSL = 1,
-    }
-
-    public enum ProcessInformationClass
-    {
-        ProcessBasicInformation, // 0, q: PROCESS_BASIC_INFORMATION, PROCESS_EXTENDED_BASIC_INFORMATION
-        ProcessQuotaLimits, // qs: QUOTA_LIMITS, QUOTA_LIMITS_EX
-        ProcessIoCounters, // q: IO_COUNTERS
-        ProcessVmCounters, // q: VM_COUNTERS, VM_COUNTERS_EX, VM_COUNTERS_EX2
-        ProcessTimes, // q: KERNEL_USER_TIMES
-        ProcessBasePriority, // s: KPRIORITY
-        ProcessRaisePriority, // s: ULONG
-        ProcessDebugPort, // q: HANDLE
-        ProcessExceptionPort, // s: HANDLE
-        ProcessAccessToken, // s: PROCESS_ACCESS_TOKEN
-        ProcessLdtInformation, // 10, qs: PROCESS_LDT_INFORMATION
-        ProcessLdtSize, // s: PROCESS_LDT_SIZE
-        ProcessDefaultHardErrorMode, // qs: ULONG
-        ProcessIoPortHandlers, // (kernel-mode only)
-        ProcessPooledUsageAndLimits, // q: POOLED_USAGE_AND_LIMITS
-        ProcessWorkingSetWatch, // q: PROCESS_WS_WATCH_INFORMATION[]; s: void
-        ProcessUserModeIOPL,
-        ProcessEnableAlignmentFaultFixup, // s: BOOLEAN
-        ProcessPriorityClass, // qs: PROCESS_PRIORITY_CLASS
-        ProcessWx86Information,
-        ProcessHandleCount, // 20, q: ULONG, PROCESS_HANDLE_INFORMATION
-        ProcessAffinityMask, // s: KAFFINITY
-        ProcessPriorityBoost, // qs: ULONG
-        ProcessDeviceMap, // qs: PROCESS_DEVICEMAP_INFORMATION, PROCESS_DEVICEMAP_INFORMATION_EX
-        ProcessSessionInformation, // q: PROCESS_SESSION_INFORMATION
-        ProcessForegroundInformation, // s: PROCESS_FOREGROUND_BACKGROUND
-        ProcessWow64Information, // q: ULONG_PTR
-        ProcessImageFileName, // q: UNICODE_STRING
-        ProcessLUIDDeviceMapsEnabled, // q: ULONG
-        ProcessBreakOnTermination, // qs: ULONG
-        ProcessDebugObjectHandle, // 30, q: HANDLE
-        ProcessDebugFlags, // qs: ULONG
-        ProcessHandleTracing, // q: PROCESS_HANDLE_TRACING_QUERY; s: size 0 disables, otherwise enables
-        ProcessIoPriority, // qs: ULONG
-        ProcessExecuteFlags, // qs: ULONG
-        ProcessResourceManagement,
-        ProcessCookie, // q: ULONG
-        ProcessImageInformation, // q: SECTION_IMAGE_INFORMATION
-        ProcessCycleTime, // q: PROCESS_CYCLE_TIME_INFORMATION // since VISTA
-        ProcessPagePriority, // q: ULONG
-        ProcessInstrumentationCallback, // 40
-        ProcessThreadStackAllocation, // s: PROCESS_STACK_ALLOCATION_INFORMATION, PROCESS_STACK_ALLOCATION_INFORMATION_EX
-        ProcessWorkingSetWatchEx, // q: PROCESS_WS_WATCH_INFORMATION_EX[]
-        ProcessImageFileNameWin32, // q: UNICODE_STRING
-        ProcessImageFileMapping, // q: HANDLE (input)
-        ProcessAffinityUpdateMode, // qs: PROCESS_AFFINITY_UPDATE_MODE
-        ProcessMemoryAllocationMode, // qs: PROCESS_MEMORY_ALLOCATION_MODE
-        ProcessGroupInformation, // q: USHORT[]
-        ProcessTokenVirtualizationEnabled, // s: ULONG
-        ProcessConsoleHostProcess, // q: ULONG_PTR
-        ProcessWindowInformation, // 50, q: PROCESS_WINDOW_INFORMATION
-        ProcessHandleInformation, // q: PROCESS_HANDLE_SNAPSHOT_INFORMATION // since WIN8
-        ProcessMitigationPolicy, // s: PROCESS_MITIGATION_POLICY_INFORMATION
-        ProcessDynamicFunctionTableInformation,
-        ProcessHandleCheckingMode,
-        ProcessKeepAliveCount, // q: PROCESS_KEEPALIVE_COUNT_INFORMATION
-        ProcessRevokeFileHandles, // s: PROCESS_REVOKE_FILE_HANDLES_INFORMATION
-        ProcessWorkingSetControl, // s: PROCESS_WORKING_SET_CONTROL
-        ProcessHandleTable, // since WINBLUE
-        ProcessCheckStackExtentsMode,
-        ProcessCommandLineInformation, // 60, q: UNICODE_STRING
-        ProcessProtectionInformation, // q: PS_PROTECTION
-        ProcessMemoryExhaustion, // PROCESS_MEMORY_EXHAUSTION_INFO // since THRESHOLD
-        ProcessFaultInformation, // PROCESS_FAULT_INFORMATION
-        ProcessTelemetryIdInformation, // PROCESS_TELEMETRY_ID_INFORMATION
-        ProcessCommitReleaseInformation, // PROCESS_COMMIT_RELEASE_INFORMATION
-        ProcessDefaultCpuSetsInformation,
-        ProcessAllowedCpuSetsInformation,
-        ProcessSubsystemProcess,
-        ProcessJobMemoryInformation, // PROCESS_JOB_MEMORY_INFO
-        ProcessInPrivate, // since THRESHOLD2 // 70
-        ProcessRaiseUMExceptionOnInvalidHandleClose,
-        ProcessIumChallengeResponse,
-        ProcessChildProcessInformation, // PROCESS_CHILD_PROCESS_INFORMATION
-        ProcessHighGraphicsPriorityInformation,
-        ProcessSubsystemInformation, // q: SUBSYSTEM_INFORMATION_TYPE // since REDSTONE2
-        ProcessEnergyValues, // PROCESS_ENERGY_VALUES, PROCESS_EXTENDED_ENERGY_VALUES
-        ProcessActivityThrottleState, // PROCESS_ACTIVITY_THROTTLE_STATE
-        ProcessActivityThrottlePolicy, // PROCESS_ACTIVITY_THROTTLE_POLICY
-        ProcessWin32kSyscallFilterInformation,
-        ProcessDisableSystemAllowedCpuSets,
-        ProcessWakeInformation, // PROCESS_WAKE_INFORMATION
-        ProcessEnergyTrackingState, // PROCESS_ENERGY_TRACKING_STATE
-        ProcessManageWritesToExecutableMemory, // MANAGE_WRITES_TO_EXECUTABLE_MEMORY // since REDSTONE3
-        ProcessCaptureTrustletLiveDump,
-        ProcessTelemetryCoverage,
-        ProcessEnclaveInformation,
-        ProcessEnableReadWriteVmLogging, // PROCESS_READWRITEVM_LOGGING_INFORMATION
-        ProcessUptimeInformation, // PROCESS_UPTIME_INFORMATION
-        ProcessImageSection,
-    }
-
-    public enum ProcessMitigationPolicy
-    {
-        DEP, // Comes from ProcessExecuteFlags, we don't use.
-        ASLR,
-        DynamicCode,
-        StrictHandleCheck,
-        SystemCallDisable,
-        MitigationOptionsMask, // Unused
-        ExtensionPointDisable,
-        ControlFlowGuard,
-        Signature,
-        FontDisable,
-        ImageLoad,
-        SystemCallFilter,
-        PayloadRestriction,
-        ChildProcess
-    }
-
-    public struct MitigationPolicy
-    {
-        public ProcessMitigationPolicy Policy;
-        public int Result;
-    }
-
-    public struct ProcessDepStatus
-    {
-        public bool Permanent;
-        public bool Enabled;
-        public bool DisableAtlThunkEmulation;
-    }
-
-    [StructLayout(LayoutKind.Sequential)]
-    public class ClientId
-    {
-        public IntPtr UniqueProcess;
-        public IntPtr UniqueThread;
-    }
-
-    [StructLayout(LayoutKind.Sequential)]
-    public struct ClientIdStruct
-    {
-        public IntPtr UniqueProcess;
-        public IntPtr UniqueThread;
-    }
-
-    [StructLayout(LayoutKind.Sequential)]
-    public struct ProcessDeviceMapInformationSet
-    {
-        public IntPtr DirectoryHandle;
-    }
-
-    [StructLayout(LayoutKind.Sequential)]
-    public struct ProcessDeviceMapInformationQuery
-    {
-        public uint DriveMap;
-        [MarshalAs(UnmanagedType.ByValArray, SizeConst = 32)]
-        public byte[] DriveType;
-    }
-
-    public enum ProcessDeviceMapQueryFlags
-    {
-        LuidDosDevicesOnly = 0x00000001
-    }
-
-    [StructLayout(LayoutKind.Sequential)]
-    public struct ProcessDeviceMapInformationQueryEx
-    {
-        public uint DriveMap;
-        [MarshalAs(UnmanagedType.ByValArray, SizeConst = 32)]
-        public byte[] DriveType;
-        public ProcessDeviceMapQueryFlags Flags;
-    }
-
-    [StructLayout(LayoutKind.Sequential)]
-    public struct ProcessAccessToken
-    {
-        public IntPtr AccessToken;
-        public IntPtr InitialThread;
-    }
-    
-    public static partial class NtSystemCalls
-    {
-        [DllImport("ntdll.dll")]
-        public static extern NtStatus NtQueryInformationProcess(SafeKernelObjectHandle ProcessHandle,
-          ProcessInformationClass ProcessInformationClass,
-          SafeHGlobalBuffer ProcessInformation,
-          int ProcessInformationLength,
-          [Out] out int ReturnLength
-          );
-
-        [DllImport("ntdll.dll")]
-        public static extern NtStatus NtSetInformationProcess(SafeKernelObjectHandle ProcessHandle,
-            ProcessInformationClass ProcessInformationClass,
-            SafeHGlobalBuffer ProcessInformation,
-            int ProcessInformationLength);
-
-        [DllImport("ntdll.dll")]
-        public static extern NtStatus NtGetNextProcess(
-          SafeKernelObjectHandle ProcessHandle,
-          ProcessAccessRights DesiredAccess,
-          AttributeFlags HandleAttributes,
-          int Flags,
-          out SafeKernelObjectHandle NewProcessHandle
-        );
-
-        [DllImport("ntdll.dll")]
-        public static extern NtStatus NtCreateUserProcess(
-          out SafeKernelObjectHandle ProcessHandle, 
-          out SafeKernelObjectHandle ThreadHandle,
-          ProcessAccessRights ProcessDesiredAccess,
-          ThreadAccessRights ThreadDesiredAccess,
-          ObjectAttributes ProcessObjectAttributes,
-          ObjectAttributes ThreadObjectAttributes,
-          ProcessCreateFlags ProcessFlags,
-          ThreadCreateFlags ThreadFlags,
-          IntPtr ProcessParameters,
-          [In, Out] ProcessCreateInfo CreateInfo,
-          [In, Out] ProcessAttributeList AttributeList
-        );
-
-        [DllImport("ntdll.dll")]
-        public static extern NtStatus NtTerminateProcess(SafeKernelObjectHandle ProcessHandle, NtStatus ExitCode);
-
-        [DllImport("ntdll.dll")]
-        public static extern NtStatus NtCreateProcess(out SafeKernelObjectHandle ProcessHandle, ProcessAccessRights DesiredAccess, 
-            ObjectAttributes ObjectAttributes, IntPtr InheritFromProcessHandle, [MarshalAs(UnmanagedType.U1)] bool InheritHandles, 
-            IntPtr SectionHandle, IntPtr DebugPort, IntPtr ExceptionPort);
-
-        [DllImport("ntdll.dll")]
-        public static extern NtStatus NtCreateProcessEx(out SafeKernelObjectHandle ProcessHandle, ProcessAccessRights DesiredAccess, 
-            ObjectAttributes ObjectAttributes, SafeHandle InheritFromProcessHandle, ProcessCreateFlags Flags, SafeHandle SectionHandle,
-            SafeHandle DebugPort, SafeHandle ExceptionPort, int Unused);
-
-        [DllImport("ntdll.dll")]
-        public static extern NtStatus NtOpenProcess(
-          out SafeKernelObjectHandle ProcessHandle,
-          ProcessAccessRights DesiredAccess,
-          [In] ObjectAttributes ObjectAttributes,
-          [In] ClientId ClientId
-        );
-
-        [DllImport("ntdll.dll")]
-        public static extern NtStatus NtSuspendProcess(SafeKernelObjectHandle ProcessHandle);
-
-        [DllImport("ntdll.dll")]
-        public static extern NtStatus NtResumeProcess(SafeKernelObjectHandle ProcessHandle);
-    }
-
-    public static partial class NtRtl
-    {
-
-        [DllImport("ntdll.dll")]
-        public static extern NtStatus RtlCreateProcessParametersEx(
-            [Out] out IntPtr pProcessParameters,
-            [In] UnicodeString ImagePathName,
-            [In] UnicodeString DllPath,
-            [In] UnicodeString CurrentDirectory,
-            [In] UnicodeString CommandLine,
-            [In, MarshalAs(UnmanagedType.LPArray)] byte[] Environment,
-            [In] UnicodeString WindowTitle,
-            [In] UnicodeString DesktopInfo,
-            [In] UnicodeString ShellInfo,
-            [In] UnicodeString RuntimeData,
-            uint Flags);
-
-        [DllImport("ntdll.dll")]
-        public static extern void RtlDestroyProcessParameters(IntPtr pProcessParameters);
-    }
-
-    public class ProcessAttribute : IDisposable
-    {
-        const uint NumberMask = 0x0000FFFF;
-        const uint ThreadOnly = 0x00010000; // Attribute may be used with thread creation
-        const uint InputOnly = 0x00020000; // Attribute is input only
-        const uint Additive = 0x00040000; // Attribute may be "accumulated," e.g. bitmasks, counters, etc
-
-        SafeHandle _handle;
-        ProcessAttributeNum _attribute_num;
-        bool _thread;
-        bool _input;
-        bool _additive;
-        IntPtr _valueptr;
-        IntPtr _size;
-        IntPtr _return_length;
-
-        private ProcessAttribute(ProcessAttributeNum num, bool thread, bool input, bool additive, IntPtr valueptr, int size, IntPtr return_length)
-        {
-            _attribute_num = num;
-            _thread = thread;
-            _input = input;
-            _additive = additive;
-            _valueptr = valueptr;
-            _size = new IntPtr(size);
-            _return_length = return_length;
-        }
-
-        private ProcessAttribute(ProcessAttributeNum num, bool thread, bool input, bool additive, SafeHandle handle, int size, IntPtr return_length) :
-           this(num, thread, input, additive, handle.DangerousGetHandle(), size, return_length)
-        {
-            _handle = handle;
-        }
-
-        private ProcessAttribute(ProcessAttributeNum num, bool thread, bool input, bool additive, SafeHGlobalBuffer handle) :
-          this(num, thread, input, additive, handle, handle.Length, IntPtr.Zero)
-        {
-        }
-
-        private ProcessAttribute(ProcessAttributeNum num, bool thread, bool input, bool additive, SafeKernelObjectHandle handle) :
-            this(num, thread, input, additive, handle, IntPtr.Size, IntPtr.Zero)
-        {
-        }
-
-        public ProcessAttributeNative GetNativeAttribute()
-        {
-            IntPtr valueptr = _handle != null ? _handle.DangerousGetHandle() : _valueptr;
-            return new ProcessAttributeNative(((uint)_attribute_num & NumberMask)
-              | (_thread ? ThreadOnly : 0) | (_input ? InputOnly : 0) | (_additive ? Additive : 0), valueptr, _size, _return_length);
-        }
-
-        public static ProcessAttribute ImageName(string image_name)
-        {
-            SafeHGlobalBuffer name = new SafeHGlobalBuffer(Marshal.StringToHGlobalUni(image_name), image_name.Length * 2, true);
-            return new ProcessAttribute(ProcessAttributeNum.ImageName, false, true, false,
-                  name);
-        }
-
-        public static ProcessAttribute ParentProcess(SafeKernelObjectHandle parent_process)
-        {
-            return new ProcessAttribute(ProcessAttributeNum.ParentProcess,
-              false, true, true, NtObject.DuplicateHandle(parent_process));
-        }
-
-        public static ProcessAttribute Token(SafeKernelObjectHandle token)
-        {
-            return new ProcessAttribute(ProcessAttributeNum.Token,
-              false, true, true, NtObject.DuplicateHandle(token));
-        }
-
-        public static ProcessAttribute ImageInfo(SafeStructureInOutBuffer<SectionImageInformation> image_information)
-        {
-            return new ProcessAttribute(ProcessAttributeNum.ImageInfo, false, false, false, image_information);
-        }
-
-        public static ProcessAttribute ClientId(SafeStructureInOutBuffer<ClientId> client_id)
-        {
-            return new ProcessAttribute(ProcessAttributeNum.ClientId, true, false, false, client_id);
-        }
-
-        public static ProcessAttribute ChildProcess(bool child_process_restricted, bool child_process_override)
-        {
-            int value = child_process_restricted ? 1 : 0;
-            if (child_process_override)
-            {
-                value |= 2;
-            }
-            return new ProcessAttribute(ProcessAttributeNum.ChildProcess, false, true, false, value.ToBuffer());
-        }
-
-        public static ProcessAttribute ProtectionLevel(PsProtectedType type, PsProtectedSigner signer, bool audit)
-        {
-            PsProtection protection = new PsProtection(type, signer, audit);
-
-            return new ProcessAttribute(ProcessAttributeNum.ProtectionLevel, false, true, true, new IntPtr(protection.Level), 1, IntPtr.Zero);
-        }
-
-        public static ProcessAttribute HandleList(IEnumerable<SafeHandle> handles)
-        {
-            return new ProcessAttribute(ProcessAttributeNum.HandleList, false, true, false,
-              new SafeHandleListHandle(handles.Select(h => NtObject.DuplicateHandle(h.ToSafeKernelHandle()))));
-        }
-
-        #region IDisposable Support
-        private bool disposedValue = false; // To detect redundant calls
-
-        protected virtual void Dispose(bool disposing)
-        {
-            if (!disposedValue)
-            {
-                if (_handle != null)
-                {
-                    _handle.Close();
-                    _handle = null;
-                }
-
-                disposedValue = true;
-            }
-        }
-
-        ~ProcessAttribute()
-        {
-            Dispose(false);
-        }
-
-        public void Dispose()
-        {
-            Dispose(true);
-            GC.SuppressFinalize(this);
-        }
-        #endregion
-
-    };
-
-    [StructLayout(LayoutKind.Sequential)]
-    public sealed class ProcessAttributeList
-    {
-        IntPtr TotalLength;
-        // Allocate upto 64 entries.
-        [MarshalAs(UnmanagedType.ByValArray, SizeConst = 64)]
-        ProcessAttributeNative[] Attributes;
-
-        public ProcessAttributeList(IEnumerable<ProcessAttribute> attributes)
-        {
-            ProcessAttributeNative[] attrs = attributes.Select(a => a.GetNativeAttribute()).ToArray();
-            Attributes = new ProcessAttributeNative[64];
-            Array.Copy(attrs, Attributes, attrs.Length);
-            TotalLength = new IntPtr(IntPtr.Size + Marshal.SizeOf(typeof(ProcessAttributeNative)) * attrs.Length);
-        }
-    }
-
-    [Flags]
-    public enum PebFlags : byte
-    {
-        None = 0,
-        ImageUsesLargePages = 0x01,
-        IsProtectedProcess = 0x02,
-        IsImageDynamicallyRelocated = 0x04,
-        SkipPatchingUser32Forwarders = 0x08,
-        IsPackagedProcess = 0x10,
-        IsAppContainer = 0x20,
-        IsProtectedProcessLight = 0x40,
-        IsLongPathAwareProcess = 0x80,
-    }
-
-    public interface IPeb
-    {
-        PebFlags GetPebFlags();
-        IntPtr GetImageBaseAddress();
-        IntPtr GetProcessHeap();
-    }
-
-    /// <summary>
-    /// Partial definition of the PEB
-    /// </summary>
-    [StructLayout(LayoutKind.Sequential)]
-    public struct PartialPeb : IPeb
-    {
-        public byte InheritedAddressSpace;
-        public byte ReadImageFileExecOptions;
-        public byte BeingDebugged;
-        public PebFlags PebFlags;
-        public IntPtr Mutant;
-        public IntPtr ImageBaseAddress;
-        public IntPtr Ldr; // PPEB_LDR_DATA
-        public IntPtr ProcessParameters; // PRTL_USER_PROCESS_PARAMETERS
-        public IntPtr SubSystemData;
-        public IntPtr ProcessHeap;
-
-        IntPtr IPeb.GetImageBaseAddress()
-        {
-            return ImageBaseAddress;
-        }
-
-        PebFlags IPeb.GetPebFlags()
-        {
-            return PebFlags;
-        }
-
-        IntPtr IPeb.GetProcessHeap()
-        {
-            return ProcessHeap;
-        }
-    }
-
-    /// <summary>
-    /// Partial definition of the PEB
-    /// </summary>
-    [StructLayout(LayoutKind.Sequential)]
-    public struct PartialPeb32 : IPeb
-    {
-        public byte InheritedAddressSpace;
-        public byte ReadImageFileExecOptions;
-        public byte BeingDebugged;
-        public PebFlags PebFlags;
-        public int Mutant;
-        public int ImageBaseAddress;
-        public int Ldr; // PPEB_LDR_DATA
-        public int ProcessParameters; // PRTL_USER_PROCESS_PARAMETERS
-        public int SubSystemData;
-        public int ProcessHeap;
-
-        IntPtr IPeb.GetImageBaseAddress()
-        {
-            return new IntPtr(ImageBaseAddress);
-        }
-
-        PebFlags IPeb.GetPebFlags()
-        {
-            return PebFlags;
-        }
-
-        IntPtr IPeb.GetProcessHeap()
-        {
-            return new IntPtr(ProcessHeap);
-        }
-    }
-
-#pragma warning restore 1591
-
     /// <summary>
     /// Class representing a NT Process object.
     /// </summary>
     [NtType("Process")]
-    public class NtProcess : NtObjectWithDuplicate<NtProcess, ProcessAccessRights>
+    public class NtProcess : NtObjectWithDuplicateAndInfo<NtProcess, ProcessAccessRights, ProcessInformationClass, ProcessInformationClass>
     {
+        #region Private Members
         private int? _pid;
         private ProcessExtendedBasicInformation _extended_info;
         private bool? _wow64;
@@ -923,21 +39,30 @@ namespace NtApiDotNet
                 if (!IsAccessGranted(ProcessAccessRights.QueryLimitedInformation)
                     && !IsAccessGranted(ProcessAccessRights.QueryInformation))
                 {
-                    _extended_info = new ProcessExtendedBasicInformation();
+                    // If we don't have query try and duplicate.
+                    using (var dup_process = Duplicate(ProcessAccessRights.QueryLimitedInformation, false))
+                    {
+                        if (dup_process.IsSuccess)
+                            return dup_process.Result.GetExtendedBasicInfo(false);
+                        _extended_info = new ProcessExtendedBasicInformation();
+                    }
                 }
                 else
                 {
-                    try
+                    using (var buffer = Query(ProcessInformationClass.ProcessBasicInformation, new ProcessExtendedBasicInformation(), false))
                     {
-                        _extended_info = QueryFixed<ProcessExtendedBasicInformation>(ProcessInformationClass.ProcessBasicInformation);
-                    }
-                    catch (NtException)
-                    {
-                        ProcessExtendedBasicInformation result = new ProcessExtendedBasicInformation
+                        if (buffer.IsSuccess)
                         {
-                            BasicInfo = QueryFixed<ProcessBasicInformation>(ProcessInformationClass.ProcessBasicInformation)
-                        };
-                        _extended_info = result;
+                            _extended_info = buffer.Result;
+                        }
+                        else
+                        {
+                            ProcessExtendedBasicInformation result = new ProcessExtendedBasicInformation
+                            {
+                                BasicInfo = Query<ProcessBasicInformation>(ProcessInformationClass.ProcessBasicInformation)
+                            };
+                            _extended_info = result;
+                        }
                     }
                 }
             }
@@ -950,53 +75,180 @@ namespace NtApiDotNet
             return GetExtendedBasicInfo(true).BasicInfo;
         }
 
-        private NtStatus Query<T>(ProcessInformationClass info_class, out SafeStructureInOutBuffer<T> buffer) where T : new()
+        private static Enum ConvertPolicyToEnum(ProcessMitigationPolicy policy, int value)
         {
-            buffer = null;
-
-            NtStatus status = NtSystemCalls.NtQueryInformationProcess(Handle, info_class, SafeHGlobalBuffer.Null, 0, out int return_length);
-            if (status != NtStatus.STATUS_INFO_LENGTH_MISMATCH && status != NtStatus.STATUS_BUFFER_TOO_SMALL)
+            switch (policy)
             {
-                return status;
-            }
-
-            SafeStructureInOutBuffer<T> temp_buffer = new SafeStructureInOutBuffer<T>(return_length, false);
-            status = NtSystemCalls.NtQueryInformationProcess(Handle, info_class, temp_buffer, temp_buffer.Length, out return_length);
-            if (status.IsSuccess())
-            {
-                buffer = temp_buffer;
-            }
-            else
-            {
-                temp_buffer.Close();
-            }
-
-            return status;
-        }
-
-        private SafeStructureInOutBuffer<T> Query<T>(ProcessInformationClass info_class) where T : new()
-        {
-            Query(info_class, out SafeStructureInOutBuffer<T> buffer).ToNtException();
-            return buffer;
-        }
-
-        private T QueryFixed<T>(ProcessInformationClass info_class) where T : new()
-        {
-            return QueryFixed<T>(info_class, true).Result;
-        }
-
-        private NtResult<T> QueryFixed<T>(ProcessInformationClass info_class, bool throw_on_error) where T : new()
-        {
-            using (var buffer = new SafeStructureInOutBuffer<T>())
-            {
-                return NtSystemCalls.NtQueryInformationProcess(Handle, info_class, buffer, buffer.Length, 
-                    out int return_length).CreateResult(throw_on_error, () => buffer.Result);
+                case ProcessMitigationPolicy.ImageLoad:
+                    return (ProcessMitigationImageLoadPolicy)value;
+                case ProcessMitigationPolicy.Signature:
+                    return (ProcessMitigationBinarySignaturePolicy)value;
+                case ProcessMitigationPolicy.ControlFlowGuard:
+                    return (ProcessMitigationControlFlowGuardPolicy)value;
+                case ProcessMitigationPolicy.DynamicCode:
+                    return (ProcessMitigationDynamicCodePolicy)value;
+                case ProcessMitigationPolicy.ExtensionPointDisable:
+                    return (ProcessMitigationExtensionPointDisablePolicy)value;
+                case ProcessMitigationPolicy.FontDisable:
+                    return (ProcessMitigationFontDisablePolicy)value;
+                case ProcessMitigationPolicy.StrictHandleCheck:
+                    return (ProcessMitigationStrictHandleCheckPolicy)value;
+                case ProcessMitigationPolicy.SystemCallDisable:
+                    return (ProcessMitigationSystemCallDisablePolicy)value;
+                case ProcessMitigationPolicy.ChildProcess:
+                    return (ProcessMitigationChildProcessPolicy)value;
+                case ProcessMitigationPolicy.PayloadRestriction:
+                    return (ProcessMitigationPayloadRestrictionPolicy)value;
+                case ProcessMitigationPolicy.SystemCallFilter:
+                    return (ProcessMitigationSystemCallFilterPolicy)value;
+                case ProcessMitigationPolicy.SideChannelIsolation:
+                    return (ProcessMitigationSideChannelIsolationPolicy)value;
+                case ProcessMitigationPolicy.ASLR:
+                    return (ProcessMitigationAslrPolicy)value;
+                default:
+                    return (ProcessMitigationUnknownPolicy)value;
             }
         }
+
+        private T QueryToken<T>(TokenAccessRights desired_access, Func<NtToken, T> callback, T default_value)
+        {
+            return NtToken.OpenProcessToken(this, desired_access, false).RunAndDispose(callback, default_value);
+        }
+
+        private T QueryToken<T>(Func<NtToken, T> callback, T default_value)
+        {
+            return QueryToken(TokenAccessRights.Query, callback, default_value);
+        }
+
+        private T QueryToken<T>(Func<NtToken, T> callback)
+        {
+            return QueryToken(TokenAccessRights.Query, callback, default);
+        }
+
+        private static NtProcessCreateResult Create(NtProcessCreateConfig config, string image_path, bool fork, bool throw_on_error)
+        {
+            using (var dispose = new DisposableList())
+            {
+                var process_params = SafeProcessParametersBuffer.Null;
+                if (!fork)
+                {
+                    var result = dispose.AddResource(SafeProcessParametersBuffer.Create(config.ConfigImagePath ?? image_path,
+                        config.DllPath, config.CurrentDirectory, config.CommandLine, config.Environment,
+                        config.WindowTitle, config.DesktopInfo, config.ShellInfo, config.RuntimeData,
+                        CreateProcessParametersFlags.Normalize, throw_on_error));
+                    if (!result.IsSuccess)
+                        return new NtProcessCreateResult(result.Status);
+                    process_params = result.Result;
+                    if (config.ProcessParametersCallback != null)
+                    {
+                        process_params = config.ProcessParametersCallback(process_params, dispose);
+                    }
+                    if (!string.IsNullOrWhiteSpace(config.RedirectionDllName)
+                        && NtObjectUtils.SupportedVersion >= SupportedVersion.Windows10_19H1)
+                    {
+                        var str = dispose.AddResource(new UnicodeStringAllocated(config.RedirectionDllName));
+                        IntPtr offset = Marshal.OffsetOf(typeof(RtlUserProcessParameters), "RedirectionDllName");
+                        process_params.Write((ulong)offset.ToInt32(), str.String);
+                    }
+                }
+
+                ProcessCreateInfo create_info = dispose.AddResource(new ProcessCreateInfo());
+                if (!fork)
+                {
+                    dispose.Add(ProcessAttribute.ImageName(image_path));
+                }
+
+                SafeStructureInOutBuffer<SectionImageInformation> image_info = new SafeStructureInOutBuffer<SectionImageInformation>();
+                dispose.Add(ProcessAttribute.ImageInfo(image_info));
+                SafeStructureInOutBuffer<ClientId> client_id = new SafeStructureInOutBuffer<ClientId>();
+                dispose.Add(ProcessAttribute.ClientId(client_id));
+
+                if (config.ParentProcess != null)
+                {
+                    dispose.Add(ProcessAttribute.ParentProcess(config.ParentProcess.Handle));
+                }
+
+                if (config.ChildProcessMitigations != ChildProcessMitigationFlags.None)
+                {
+                    dispose.Add(ProcessAttribute.ChildProcess(config.ChildProcessMitigations));
+                }
+
+                if (config.Token != null)
+                {
+                    dispose.Add(ProcessAttribute.Token(config.Token.Handle));
+                }
+
+                if (config.ProtectionLevel.Level != 0)
+                {
+                    dispose.Add(ProcessAttribute.ProtectionLevel(config.ProtectionLevel));
+                }
+
+                if (config.Secure)
+                {
+                    var trustlet_config = config.TrustletConfig ?? NtProcessTrustletConfig.CreateFromFile(image_path);
+                    dispose.Add(ProcessAttribute.SecureProcess(trustlet_config));
+                }
+
+                if (config.InheritHandleList.Count > 0)
+                {
+                    dispose.Add(ProcessAttribute.HandleList(config.InheritHandleList.Select(o => o.Handle)));
+                }
+
+                var attr_list = dispose.AddResource(ProcessAttributeList.Create(dispose.OfType<ProcessAttribute>().Concat(config.AdditionalAttributes)));
+                create_info.Data.InitFlags = config.InitFlags;
+                if (config.CaptureAdditionalInformation)
+                {
+                    create_info.Data.InitFlags |= ProcessCreateInitFlag.WriteOutputOnExit;
+                }
+                create_info.Data.ProhibitedImageCharacteristics = config.ProhibitedImageCharacteristics;
+                create_info.Data.AdditionalFileAccess = config.AdditionalFileAccess;
+
+                var proc_attr = dispose.AddResource(new ObjectAttributes(null, AttributeFlags.None,
+                        SafeKernelObjectHandle.Null, null, config.ProcessSecurityDescriptor));
+                var thread_attr = dispose.AddResource(new ObjectAttributes(null, AttributeFlags.None,
+                        SafeKernelObjectHandle.Null, null, config.ThreadSecurityDescriptor));
+
+                ProcessCreateFlags process_flags = config.ProcessFlags;
+                if (fork)
+                {
+                    process_flags |= ProcessCreateFlags.InheritFromParent;
+                }
+
+                NtStatus status = NtSystemCalls.NtCreateUserProcess(
+                    out SafeKernelObjectHandle process_handle, out SafeKernelObjectHandle thread_handle,
+                    config.ProcessDesiredAccess, config.ThreadDesiredAccess,
+                    proc_attr, thread_attr, config.ProcessFlags,
+                    config.ThreadFlags, process_params.DangerousGetHandle(), create_info, attr_list).ToNtException(throw_on_error);
+                if (create_info.State == ProcessCreateState.Success)
+                {
+                    return new NtProcessCreateResult(status, process_handle, thread_handle,
+                        create_info.Data, image_info.Result, client_id.Result, config.TerminateOnDispose);
+                }
+                else
+                {
+                    return new NtProcessCreateResult(status, create_info.Data, create_info.State);
+                }
+            }
+        }
+
+        #endregion
+
+        #region Constructors
 
         internal NtProcess(SafeKernelObjectHandle handle) : base(handle)
         {
         }
+
+        internal sealed class NtTypeFactoryImpl : NtTypeFactoryImplBase
+        {
+            public NtTypeFactoryImpl() : base(false, MandatoryLabelPolicy.NoWriteUp | MandatoryLabelPolicy.NoReadUp)
+            {
+            }
+        }
+
+        #endregion
+
+        #region Static Methods
 
         /// <summary>
         /// Gets all accessible processes on the system.
@@ -1075,18 +327,239 @@ namespace NtApiDotNet
         }
 
         /// <summary>
+        /// Open a process
+        /// </summary>
+        /// <param name="pid">The process ID to open</param>
+        /// <param name="desired_access">The desired access for the handle</param>
+        /// <param name="throw_on_error">True to throw an exception on error.</param>
+        /// <returns>The NT status code and object result.</returns>
+        public static NtResult<NtProcess> Open(int pid, ProcessAccessRights desired_access, bool throw_on_error)
+        {
+            ClientId client_id = new ClientId
+            {
+                UniqueProcess = new IntPtr(pid)
+            };
+            return NtSystemCalls.NtOpenProcess(out SafeKernelObjectHandle process, desired_access, new ObjectAttributes(), client_id)
+                .CreateResult(throw_on_error, () => new NtProcess(process) { _pid = pid });
+        }
+
+        /// <summary>
+        /// Open a process
+        /// </summary>
+        /// <param name="pid">The process ID to open</param>
+        /// <param name="desired_access">The desired access for the handle</param>
+        /// <returns>The opened process</returns>
+        public static NtProcess Open(int pid, ProcessAccessRights desired_access)
+        {
+            return Open(pid, desired_access, true).Result;
+        }
+
+        /// <summary>
+        /// Create a new process
+        /// </summary>
+        /// <param name="desired_access">Desired access for the new process.</param>
+        /// <param name="object_attributes">Optional object attributes.</param>
+        /// <param name="parent_process">The parent process</param>
+        /// <param name="flags">Creation flags</param>
+        /// <param name="section_handle">Handle to the executable image section</param>
+        /// <param name="debug_port">Debug port for the new process.</param>
+        /// <param name="token">Access token for the new process.</param>
+        /// <param name="throw_on_error">True to throw on error.</param>
+        /// <returns>The created process</returns>
+        public static NtResult<NtProcess> CreateProcessEx(ProcessAccessRights desired_access, ObjectAttributes object_attributes,
+            NtProcess parent_process, ProcessCreateFlags flags, NtSection section_handle, NtDebug debug_port, NtToken token, bool throw_on_error)
+        {
+            return NtSystemCalls.NtCreateProcessEx(out SafeKernelObjectHandle process, desired_access,
+                object_attributes, parent_process?.Handle ?? Current.Handle, flags, section_handle.GetHandle(), debug_port.GetHandle(),
+                token.GetHandle(), 0).CreateResult(throw_on_error, () => new NtProcess(process));
+        }
+
+        /// <summary>
+        /// Create a new process
+        /// </summary>
+        /// <param name="desired_access">Desired access for the new process.</param>
+        /// <param name="object_attributes">Optional object attributes.</param>
+        /// <param name="parent_process">The parent process</param>
+        /// <param name="flags">Creation flags</param>
+        /// <param name="section_handle">Handle to the executable image section</param>
+        /// <param name="debug_port">Debug port for the new process.</param>
+        /// <param name="token">Access token for the new process.</param>
+        /// <returns>The created process</returns>
+        public static NtProcess CreateProcessEx(ObjectAttributes object_attributes, ProcessAccessRights desired_access,
+            NtProcess parent_process, ProcessCreateFlags flags, NtSection section_handle, NtDebug debug_port, NtToken token)
+        {
+            return CreateProcessEx(desired_access, object_attributes, parent_process, flags, section_handle, debug_port, token, true).Result;
+        }
+
+        /// <summary>
+        /// Create a new process
+        /// </summary>
+        /// <param name="parent_process">The parent process</param>
+        /// <param name="flags">Creation flags</param>
+        /// <param name="section_handle">Handle to the executable image section</param>
+        /// <param name="token">Access token for the new process.</param>
+        /// <returns>The created process</returns>
+        public static NtProcess CreateProcessEx(NtProcess parent_process, ProcessCreateFlags flags, NtSection section_handle, NtToken token)
+        {
+            return CreateProcessEx(null, ProcessAccessRights.MaximumAllowed, parent_process, flags, section_handle, null, token);
+        }
+
+        /// <summary>
+        /// Create a new process
+        /// </summary>
+        /// <param name="parent_process">The parent process</param>
+        /// <param name="flags">Creation flags</param>
+        /// <param name="section_handle">Handle to the executable image section</param>
+        /// <returns>The created process</returns>
+        public static NtProcess CreateProcessEx(NtProcess parent_process, ProcessCreateFlags flags, NtSection section_handle)
+        {
+            return CreateProcessEx(parent_process, flags, section_handle, null);
+        }
+
+        /// <summary>
+        /// Create a new process
+        /// </summary>
+        /// <param name="section_handle">Handle to the executable image section</param>
+        /// <param name="token">Access token for the new process.</param>
+        /// <returns>The created process</returns>
+        public static NtProcess CreateProcessEx(NtSection section_handle, NtToken token)
+        {
+            return CreateProcessEx(null, ProcessCreateFlags.None, section_handle, token);
+        }
+
+        /// <summary>
+        /// Create a new process
+        /// </summary>
+        /// <param name="section_handle">Handle to the executable image section</param>
+        /// <returns>The created process</returns>
+        public static NtProcess CreateProcessEx(NtSection section_handle)
+        {
+            return CreateProcessEx(section_handle, null);
+        }
+
+        /// <summary>
+        /// Create a new use new process.
+        /// </summary>
+        /// <param name="config">The process configuration.</param>
+        /// <param name="throw_on_error">True to throw on error.</param>
+        /// <returns>The result of the process creation</returns>
+        public static NtProcessCreateResult Create(NtProcessCreateConfig config, bool throw_on_error)
+        {
+            string image_path = config.ImagePath ?? config.ConfigImagePath;
+            if (image_path == null)
+                throw new ArgumentNullException("image_path");
+
+            return Create(config, image_path, false, throw_on_error);
+        }
+
+        /// <summary>
+        /// Create a new use new process.
+        /// </summary>
+        /// <param name="config">The process configuration.</param>
+        /// <returns>The result of the process creation</returns>
+        public static NtProcessCreateResult Create(NtProcessCreateConfig config)
+        {
+            return Create(config, true);
+        }
+
+        /// <summary>
+        /// Fork a process.
+        /// </summary>
+        /// <param name="config">The process configuration.</param>
+        /// <param name="throw_on_error">True to throw on error.</param>
+        /// <returns>The new forked process result</returns>
+        /// <remarks>This uses NtCreateUserProcess.</remarks>
+        public static NtProcessCreateResult Fork(NtProcessCreateConfig config, bool throw_on_error)
+        {
+            return Create(config, string.Empty, true, throw_on_error);
+        }
+
+        /// <summary>
+        /// Fork a process.
+        /// </summary>
+        /// <param name="config">The process configuration.</param>
+        /// <returns>The new forked process result</returns>
+        /// <remarks>This uses NtCreateUserProcess.</remarks>
+        public static NtProcessCreateResult Fork(NtProcessCreateConfig config)
+        {
+            return Fork(config, true);
+        }
+
+        /// <summary>
+        /// Open an actual handle to the current process rather than the pseudo one used for Current
+        /// </summary>
+        /// <returns>The process object</returns>
+        public static NtProcess OpenCurrent()
+        {
+            return Current.Duplicate();
+        }
+
+        /// <summary>
+        /// Test whether a process can access another protected process.
+        /// </summary>
+        /// <param name="current">The current process.</param>
+        /// <param name="target">The target process.</param>
+        /// <returns>True if the process can be accessed.</returns>
+        public static bool TestProtectedAccess(NtProcess current, NtProcess target)
+        {
+            return NtRtl.RtlTestProtectedAccess(current.Protection.Level, target.Protection.Level);
+        }
+
+        #endregion
+
+        #region Public Methods
+
+        /// <summary>
+        /// Reopen object with different access rights.
+        /// </summary>
+        /// <param name="desired_access">The desired access.</param>
+        /// <param name="attributes">Additional attributes for open.</param>
+        /// <param name="throw_on_error">True to throw on error.</param>
+        /// <returns>The reopened object.</returns>
+        public override NtResult<NtProcess> ReOpen(ProcessAccessRights desired_access, AttributeFlags attributes, bool throw_on_error)
+        {
+            return Open(ProcessId, desired_access, throw_on_error);
+        }
+
+        /// <summary>
         /// Get next accessible process (used in combination with GetFirstProcess)
         /// </summary>
         /// <param name="desired_access">The access required for the process.</param>
         /// <returns>The accessible process, or null if one couldn't be opened.</returns>
         public NtProcess GetNextProcess(ProcessAccessRights desired_access)
         {
-            NtStatus status = NtSystemCalls.NtGetNextProcess(Handle, desired_access, AttributeFlags.None, 0, out SafeKernelObjectHandle new_handle);
+            NtStatus status = NtSystemCalls.NtGetNextProcess(Handle, desired_access, AttributeFlags.None, 
+                GetNextProcessFlags.None, out SafeKernelObjectHandle new_handle);
             if (status == NtStatus.STATUS_SUCCESS)
             {
                 return new NtProcess(new_handle);
             }
             return null;
+        }
+
+        /// <summary>
+        /// Get previous accessible process (used in combination with GetFirstProcess)
+        /// </summary>
+        /// <param name="desired_access">The access required for the process.</param>
+        /// <returns>The accessible process, or null if one couldn't be opened.</returns>
+        public NtProcess GetPreviousProcess(ProcessAccessRights desired_access)
+        {
+            NtStatus status = NtSystemCalls.NtGetNextProcess(Handle, desired_access, AttributeFlags.None,
+                GetNextProcessFlags.PreviousProcess, out SafeKernelObjectHandle new_handle);
+            if (status == NtStatus.STATUS_SUCCESS)
+            {
+                return new NtProcess(new_handle);
+            }
+            return null;
+        }
+
+        /// <summary>
+        /// Get previous accessible process (used in combination with GetFirstProcess)
+        /// </summary>
+        /// <returns>The accessible process, or null if one couldn't be opened.</returns>
+        public NtProcess GetPreviousProcess()
+        {
+            return GetPreviousProcess(ProcessAccessRights.MaximumAllowed);
         }
 
         /// <summary>
@@ -1144,174 +617,16 @@ namespace NtApiDotNet
         }
 
         /// <summary>
-        /// Get the process' session ID
-        /// </summary>
-        public int SessionId
-        {
-            get
-            {
-                using (SafeStructureInOutBuffer<ProcessSessionInformation> session_info = new SafeStructureInOutBuffer<ProcessSessionInformation>())
-                {
-                    NtSystemCalls.NtQueryInformationProcess(Handle, ProcessInformationClass.ProcessSessionInformation,
-                      session_info, session_info.Length, out int return_length).ToNtException();
-                    return session_info.Result.SessionId;
-                }
-            }
-        }
-
-        /// <summary>
-        /// Get the process' ID
-        /// </summary>
-        public int ProcessId
-        {
-            get
-            {
-                if (!_pid.HasValue)
-                {
-                    _pid = GetBasicInfo().UniqueProcessId.ToInt32();
-                }
-                return _pid.Value;
-            }
-        }
-
-        /// <summary>
-        /// Get the process' parent process ID
-        /// </summary>
-        public int ParentProcessId
-        {
-            get
-            {
-                return GetBasicInfo().InheritedFromUniqueProcessId.ToInt32();
-            }
-        }
-
-        /// <summary>
-        /// Get the memory address of the PEB
-        /// </summary>
-        public IntPtr PebAddress
-        {
-            get
-            {
-                return GetBasicInfo().PebBaseAddress;
-            }
-        }
-
-        /// <summary>
         /// Read a partial PEB from the process.
         /// </summary>
         /// <returns>The read PEB structure.</returns>
         public IPeb GetPeb()
         {
-            long address = PebAddress.ToInt64();
             if (Wow64)
             {
-                return NtVirtualMemory.ReadMemory<PartialPeb32>(Handle, address);
+                return NtVirtualMemory.ReadMemory<PartialPeb32>(Handle, PebAddress32.ToInt64());
             }
-            return NtVirtualMemory.ReadMemory<PartialPeb>(Handle, address);
-        }
-
-        /// <summary>
-        /// Get the base address of the process from the PEB.
-        /// </summary>
-        public IntPtr ImageBaseAddress
-        {
-            get
-            {
-                return GetPeb().GetImageBaseAddress();
-            }
-        }
-
-        /// <summary>
-        /// Read flags from PEB.
-        /// </summary>
-        public PebFlags PebFlags
-        {
-            get
-            {
-                return GetPeb().GetPebFlags();
-            }
-        }
-
-        /// <summary>
-        /// Get the process' exit status.
-        /// </summary>
-        public int ExitStatus
-        {
-            get
-            {
-                return GetExtendedBasicInfo(false).BasicInfo.ExitStatus;
-            }
-        }
-
-        /// <summary>
-        /// Get the process' command line
-        /// </summary>
-        public string CommandLine
-        {
-            get
-            {
-                NtStatus status = Query(ProcessInformationClass.ProcessCommandLineInformation, out SafeStructureInOutBuffer<UnicodeStringOut> buffer);
-                using (buffer)
-                {
-                    // This will fail if process is being torn down, just return an empty string.
-                    if (status == NtStatus.STATUS_PROCESS_IS_TERMINATING 
-                        || status == NtStatus.STATUS_PARTIAL_COPY 
-                        || status == NtStatus.STATUS_NOT_FOUND)
-                    {
-                        return String.Empty;
-                    }
-                    else if (!status.IsSuccess())
-                    {
-                        throw new NtException(status);
-                    }
-                    return buffer.Result.ToString();
-                }
-            }
-        }
-
-        /// <summary>
-        /// Open a process
-        /// </summary>
-        /// <param name="pid">The process ID to open</param>
-        /// <param name="desired_access">The desired access for the handle</param>
-        /// <param name="throw_on_error">True to throw an exception on error.</param>
-        /// <returns>The NT status code and object result.</returns>
-        public static NtResult<NtProcess> Open(int pid, ProcessAccessRights desired_access, bool throw_on_error)
-        {
-            SafeKernelObjectHandle process;
-            ClientId client_id = new ClientId
-            {
-                UniqueProcess = new IntPtr(pid)
-            };
-            return NtSystemCalls.NtOpenProcess(out process, desired_access, new ObjectAttributes(), client_id)
-                .CreateResult(throw_on_error, () => new NtProcess(process) { _pid = pid });
-        }
-
-        /// <summary>
-        /// Open a process
-        /// </summary>
-        /// <param name="pid">The process ID to open</param>
-        /// <param name="desired_access">The desired access for the handle</param>
-        /// <returns>The opened process</returns>
-        public static NtProcess Open(int pid, ProcessAccessRights desired_access)
-        {
-            return Open(pid, desired_access, true).Result;
-        }
-
-        /// <summary>
-        /// Create a new process
-        /// </summary>
-        /// <param name="ParentProcess">The parent process</param>
-        /// <param name="Flags">Creation flags</param>
-        /// <param name="SectionHandle">Handle to the executable image section</param>
-        /// <returns>The created process</returns>
-        public static NtProcess CreateProcessEx(NtProcess ParentProcess, ProcessCreateFlags Flags, NtSection SectionHandle)
-        {
-            SafeHandle parent_process = ParentProcess != null ? ParentProcess.Handle : Current.Handle;
-            SafeHandle section = SectionHandle?.Handle;
-            NtSystemCalls.NtCreateProcessEx(out SafeKernelObjectHandle process, ProcessAccessRights.MaximumAllowed,
-                new ObjectAttributes(), parent_process, Flags, section, null, null, 0).ToNtException();
-            return new NtProcess(process);
+            return NtVirtualMemory.ReadMemory<PartialPeb>(Handle, PebAddress.ToInt64());
         }
 
         /// <summary>
@@ -1326,13 +641,12 @@ namespace NtApiDotNet
         }
 
         /// <summary>
-        /// Create a new process
+        /// Terminate the process
         /// </summary>
-        /// <param name="SectionHandle">Handle to the executable image section</param>
-        /// <returns>The created process</returns>
-        public static NtProcess CreateProcessEx(NtSection SectionHandle)
+        /// <param name="exitcode">The exit code for the termination</param>
+        public void Terminate(int exitcode)
         {
-            return CreateProcessEx(null, ProcessCreateFlags.None, SectionHandle);
+            Terminate((NtStatus)exitcode);
         }
 
         /// <summary>
@@ -1341,7 +655,34 @@ namespace NtApiDotNet
         /// <param name="exitcode">The exit code for the termination</param>
         public void Terminate(NtStatus exitcode)
         {
-            NtSystemCalls.NtTerminateProcess(Handle, exitcode).ToNtException();
+            Terminate(exitcode, true);
+        }
+
+        /// <summary>
+        /// Terminate the process
+        /// </summary>
+        /// <param name="exitcode">The exit code for the termination</param>
+        /// <param name="throw_on_error">True to throw on error.</param>
+        /// <returns>The NT status code.</returns>
+        public NtStatus Terminate(NtStatus exitcode, bool throw_on_error)
+        {
+            return NtSystemCalls.NtTerminateProcess(Handle, exitcode).ToNtException(throw_on_error);
+        }
+
+        /// <summary>
+        /// Get process image file path
+        /// </summary>
+        /// <param name="native">True to return the native image path, false for a Win32 style path</param>
+        /// <param name="throw_on_error">True to throw on error.</param>
+        /// <returns>The process image file path</returns>
+        public NtResult<string> GetImageFilePath(bool native, bool throw_on_error)
+        {
+            ProcessInformationClass info_class = native ? ProcessInformationClass.ProcessImageFileName : ProcessInformationClass.ProcessImageFileNameWin32;
+
+            using (var result = QueryBuffer(info_class, new UnicodeStringOut(), throw_on_error))
+            {
+                return result.Map(s => s.Result.ToString());
+            }
         }
 
         /// <summary>
@@ -1351,56 +692,16 @@ namespace NtApiDotNet
         /// <returns>The process image file path</returns>
         public string GetImageFilePath(bool native)
         {
-            ProcessInformationClass info_class = native ? ProcessInformationClass.ProcessImageFileName : ProcessInformationClass.ProcessImageFileNameWin32;
-            NtStatus status = NtSystemCalls.NtQueryInformationProcess(Handle, info_class, SafeHGlobalBuffer.Null, 0, out int return_length);
-            if (status != NtStatus.STATUS_INFO_LENGTH_MISMATCH)
-                status.ToNtException();
-            using (SafeStructureInOutBuffer<UnicodeStringOut> buf = new SafeStructureInOutBuffer<UnicodeStringOut>(return_length, false))
-            {
-                NtSystemCalls.NtQueryInformationProcess(Handle, info_class, buf, buf.Length, out return_length).ToNtException();
-                return buf.Result.ToString();
-            }
-        }
-
-        /// <summary>
-        /// Get full image path name in native format
-        /// </summary>
-        public override string FullPath
-        {
-            get
-            {
-                try
-                {
-                    return GetImageFilePath(true);
-                }
-                catch (NtException)
-                {
-                    if (_pid.HasValue || IsAccessGranted(ProcessAccessRights.QueryLimitedInformation))
-                    {
-                        switch (ProcessId)
-                        {
-                            case 0:
-                                return "Idle";
-                            case 4:
-                                return "System";
-                            default:
-                                return $"process:{ProcessId}";
-                        }
-                    }
-                    else
-                    {
-                        return String.Empty;
-                    }
-                }
-            }
+            return GetImageFilePath(native, true).Result;
         }
 
         /// <summary>
         /// Get a mitigation policy raw value
         /// </summary>
         /// <param name="policy">The policy to get</param>
+        /// <param name="throw_on_error">True to throw on error.</param>
         /// <returns>The raw policy value</returns>
-        public int GetProcessMitigationPolicy(ProcessMitigationPolicy policy)
+        public NtResult<int> GetRawMitigationPolicy(ProcessMitigationPolicy policy, bool throw_on_error)
         {
             switch (policy)
             {
@@ -1414,21 +715,82 @@ namespace NtApiDotNet
                 Policy = policy
             };
 
-            using (var buffer = p.ToBuffer())
+            return Query(ProcessInformationClass.ProcessMitigationPolicy, p, throw_on_error).Map(r => r.Result);
+        }
+
+        /// <summary>
+        /// Get a mitigation policy raw value
+        /// </summary>
+        /// <param name="policy">The policy to get</param>
+        /// <returns>The raw policy value</returns>
+        public int GetRawMitigationPolicy(ProcessMitigationPolicy policy)
+        {
+            switch (policy)
             {
-                NtStatus status = NtSystemCalls.NtQueryInformationProcess(Handle, ProcessInformationClass.ProcessMitigationPolicy, buffer, buffer.Length, out int return_length);
-                if (!status.IsSuccess())
-                {
-                    if (status != NtStatus.STATUS_INVALID_PARAMETER
-                     && status != NtStatus.STATUS_NOT_SUPPORTED
-                     && status != NtStatus.STATUS_PROCESS_IS_TERMINATING)
-                    {
-                        status.ToNtException();
-                    }
-                    return 0;
-                }
-                return buffer.Result.Result;
+                case ProcessMitigationPolicy.DEP:
+                case ProcessMitigationPolicy.MitigationOptionsMask:
+                    throw new ArgumentException("Invalid mitigation policy");
             }
+
+            MitigationPolicy p = new MitigationPolicy
+            {
+                Policy = policy
+            };
+
+            var result = GetRawMitigationPolicy(policy, false);
+            switch (result.Status)
+            {
+                case NtStatus.STATUS_INVALID_PARAMETER:
+                case NtStatus.STATUS_NOT_SUPPORTED:
+                case NtStatus.STATUS_PROCESS_IS_TERMINATING:
+                    return 0;
+            }
+
+            return result.GetResultOrThrow();
+        }
+
+        /// <summary>
+        /// Get a mitigation policy as an enumeration.
+        /// </summary>
+        /// <param name="policy">The policy to get.</param>
+        /// <param name="throw_on_error">True to throw on error.</param>
+        /// <returns>The mitigation policy value</returns>
+        public NtResult<Enum> GetMitigationPolicy(ProcessMitigationPolicy policy, bool throw_on_error)
+        {
+            return GetRawMitigationPolicy(policy, throw_on_error).Map(i => ConvertPolicyToEnum(policy, i));
+        }
+
+        /// <summary>
+        /// Get a mitigation policy as an enumeration.
+        /// </summary>
+        /// <param name="policy">The policy to get.</param>
+        /// <returns>The mitigation policy value</returns>
+        public Enum GetMitigationPolicy(ProcessMitigationPolicy policy)
+        {
+            return GetMitigationPolicy(policy, true).Result;
+        }
+
+        /// <summary>
+        /// Get a mitigation policy raw value
+        /// </summary>
+        /// <param name="policy">The policy to get</param>
+        /// <param name="throw_on_error">True to throw on error.</param>
+        /// <returns>The raw policy value</returns>
+        [Obsolete("Use GetRawMitigationPolicy or GetMitigationPolicy")]
+        public NtResult<int> GetProcessMitigationPolicy(ProcessMitigationPolicy policy, bool throw_on_error)
+        {
+            return GetRawMitigationPolicy(policy, throw_on_error);
+        }
+
+        /// <summary>
+        /// Get a mitigation policy raw value
+        /// </summary>
+        /// <param name="policy">The policy to get</param>
+        /// <returns>The raw policy value</returns>
+        [Obsolete("Use GetRawMitigationPolicy or GetMitigationPolicy")]
+        public int GetProcessMitigationPolicy(ProcessMitigationPolicy policy)
+        {
+            return GetRawMitigationPolicy(policy);
         }
 
         /// <summary>
@@ -1436,7 +798,9 @@ namespace NtApiDotNet
         /// </summary>
         /// <param name="policy">The policy to set</param>
         /// <param name="value">The value to set</param>
-        public void SetProcessMitigationPolicy(ProcessMitigationPolicy policy, int value)
+        /// <param name="throw_on_error">True to throw on error.</param>
+        /// <returns>The NT status code.</returns>
+        public NtStatus SetRawMitigationPolicy(ProcessMitigationPolicy policy, int value, bool throw_on_error)
         {
             switch (policy)
             {
@@ -1451,10 +815,63 @@ namespace NtApiDotNet
                 Result = value
             };
 
-            using (var buffer = p.ToBuffer())
-            {
-                NtSystemCalls.NtSetInformationProcess(Handle, ProcessInformationClass.ProcessMitigationPolicy, buffer, buffer.Length).ToNtException();
-            }
+            return Set(ProcessInformationClass.ProcessMitigationPolicy, p, throw_on_error);
+        }
+
+        /// <summary>
+        /// Set a mitigation policy raw value
+        /// </summary>
+        /// <param name="policy">The policy to set</param>
+        /// <param name="value">The value to set</param>
+        public void SetRawMitigationPolicy(ProcessMitigationPolicy policy, int value)
+        {
+            SetRawMitigationPolicy(policy, value, true);
+        }
+
+        /// <summary>
+        /// Set a mitigation policy value from an enum.
+        /// </summary>
+        /// <param name="policy">The policy to set</param>
+        /// <param name="value">The value to set</param>
+        /// <param name="throw_on_error">True to throw on error.</param>
+        /// <returns>The NT status code.</returns>
+        public NtStatus SetMitigationPolicy(ProcessMitigationPolicy policy, Enum value, bool throw_on_error)
+        {
+            return SetRawMitigationPolicy(policy, Convert.ToInt32(value), throw_on_error);
+        }
+
+        /// <summary>
+        /// Set a mitigation policy value from an enum.
+        /// </summary>
+        /// <param name="policy">The policy to set</param>
+        /// <param name="value">The value to set</param>
+        public void SetMitigationPolicy(ProcessMitigationPolicy policy, Enum value)
+        {
+            SetMitigationPolicy(policy, value, true);
+        }
+
+        /// <summary>
+        /// Set a mitigation policy raw value
+        /// </summary>
+        /// <param name="policy">The policy to set</param>
+        /// <param name="value">The value to set</param>
+        /// <param name="throw_on_error">True to throw on error.</param>
+        /// <returns>The NT status code.</returns>
+        [Obsolete("Use SetMitigationPolicy or SetRawMitigationPolicy")]
+        public NtStatus SetProcessMitigationPolicy(ProcessMitigationPolicy policy, int value, bool throw_on_error)
+        {
+            return SetRawMitigationPolicy(policy, value, throw_on_error);
+        }
+
+        /// <summary>
+        /// Set a mitigation policy raw value
+        /// </summary>
+        /// <param name="policy">The policy to set</param>
+        /// <param name="value">The value to set</param>
+        [Obsolete("Use SetMitigationPolicy or SetRawMitigationPolicy")]
+        public void SetProcessMitigationPolicy(ProcessMitigationPolicy policy, int value)
+        {
+            SetRawMitigationPolicy(policy, value);
         }
 
         /// <summary>
@@ -1467,7 +884,27 @@ namespace NtApiDotNet
                 throw new InvalidOperationException("Must have Debug privilege to disable code policy");
             }
 
-            SetProcessMitigationPolicy(ProcessMitigationPolicy.DynamicCode, 0);
+            SetRawMitigationPolicy(ProcessMitigationPolicy.DynamicCode, 0);
+        }
+
+        /// <summary>
+        /// Suspend the entire process.
+        /// </summary>
+        /// <param name="throw_on_error">True to throw on error.</param>
+        /// <returns>The NT status code.</returns>
+        public NtStatus Suspend(bool throw_on_error)
+        {
+            return NtSystemCalls.NtSuspendProcess(Handle).ToNtException(throw_on_error);
+        }
+
+        /// <summary>
+        /// Resume the entire process.
+        /// </summary>
+        /// <param name="throw_on_error">True to throw on error.</param>
+        /// <returns>The NT status code.</returns>
+        public NtStatus Resume(bool throw_on_error)
+        {
+            return NtSystemCalls.NtResumeProcess(Handle).ToNtException(throw_on_error);
         }
 
         /// <summary>
@@ -1475,7 +912,7 @@ namespace NtApiDotNet
         /// </summary>
         public void Suspend()
         {
-            NtSystemCalls.NtSuspendProcess(Handle).ToNtException();
+            Suspend(true);
         }
 
         /// <summary>
@@ -1483,61 +920,52 @@ namespace NtApiDotNet
         /// </summary>
         public void Resume()
         {
-            NtSystemCalls.NtResumeProcess(Handle).ToNtException();
-        }
-
-        /// <summary>
-        /// Get process DEP status
-        /// </summary>
-        public ProcessDepStatus DepStatus
-        {
-            get
-            {
-                using (SafeStructureInOutBuffer<uint> buffer = new SafeStructureInOutBuffer<uint>())
-                {
-                    ProcessDepStatus ret = new ProcessDepStatus();
-                    NtStatus status = NtSystemCalls.NtQueryInformationProcess(Handle, ProcessInformationClass.ProcessExecuteFlags, buffer, buffer.Length, out int return_length);
-                    if (!status.IsSuccess())
-                    {
-                        if (status != NtStatus.STATUS_INVALID_PARAMETER)
-                        {
-                            status.ToNtException();
-                        }
-                        else if (Is64Bit)
-                        {
-                            // On 64 bits OS, DEP is always ON for 64 bits processes
-                            ret.Enabled = true;
-                            ret.Permanent = true;
-                        }
-
-                        return ret;
-                    }
-
-                    uint result = buffer.Result;
-                    if ((result & 2) == 0)
-                    {
-                        ret.Enabled = true;
-                        if ((result & 4) != 0)
-                        {
-                            ret.DisableAtlThunkEmulation = true;
-                        }
-                    }
-                    if ((result & 8) != 0)
-                    {
-                        ret.Permanent = true;
-                    }
-                    return ret;
-                }
-            }
+            Resume(true);
         }
 
         /// <summary>
         /// Open the process' token
         /// </summary>
-        /// <returns></returns>
+        /// <returns>The process token.</returns>
         public NtToken OpenToken()
         {
-            return NtToken.OpenProcessToken(this, false);
+            return OpenToken(true).Result;
+        }
+
+        /// <summary>
+        /// Open the process' token
+        /// </summary>
+        /// <param name="throw_on_error">True to throw on error.</param>
+        /// <returns>The process token.</returns>
+        public NtResult<NtToken> OpenToken(bool throw_on_error)
+        {
+            return OpenToken(TokenAccessRights.MaximumAllowed, throw_on_error);
+        }
+
+        /// <summary>
+        /// Open the process' token
+        /// </summary>
+        /// <param name="desired_access">Desired access for token.</param>
+        /// <param name="throw_on_error">True to throw on error.</param>
+        /// <returns>The process token.</returns>
+        public NtResult<NtToken> OpenToken(TokenAccessRights desired_access, bool throw_on_error)
+        {
+            return NtToken.OpenProcessToken(this, desired_access, throw_on_error);
+        }
+
+        /// <summary>
+        /// Set process access token. Process must be have not been started.
+        /// </summary>
+        /// <param name="token">The token to set.</param>
+        /// <param name="throw_on_error">True to throw on error.</param>
+        /// <returns>The NT status code.</returns>
+        public NtStatus SetToken(NtToken token, bool throw_on_error)
+        {
+            ProcessAccessToken proc_token = new ProcessAccessToken
+            {
+                AccessToken = token.Handle.DangerousGetHandle()
+            };
+            return Set(ProcessInformationClass.ProcessAccessToken, proc_token, throw_on_error);
         }
 
         /// <summary>
@@ -1546,64 +974,8 @@ namespace NtApiDotNet
         /// <param name="token">The token to set.</param>
         public void SetToken(NtToken token)
         {
-            ProcessAccessToken proc_token = new ProcessAccessToken();
-            proc_token.AccessToken = token.Handle.DangerousGetHandle();
-            using (var buffer = proc_token.ToBuffer())
-            {
-                NtSystemCalls.NtSetInformationProcess(Handle, ProcessInformationClass.ProcessAccessToken, buffer, buffer.Length).ToNtException();
-            }
+            SetToken(token, true);
         }
-
-        /// <summary>
-        /// Get the process user.
-        /// </summary>
-        public Sid User
-        {
-            get
-            {
-                using (NtToken token = OpenToken())
-                {
-                    return token.User.Sid;
-                }
-            }
-        }
-
-        /// <summary>
-        /// Get process mitigations
-        /// </summary>
-        public NtProcessMitigations Mitigations
-        {
-            get
-            {
-                return new NtProcessMitigations(this);
-            }
-        }
-
-        /// <summary>
-        /// Get extended process flags.
-        /// </summary>
-        public ProcessExtendedBasicInformationFlags ExtendedFlags
-        {
-            get
-            {
-                return GetExtendedBasicInfo(false).Flags;
-            }
-        }
-
-        /// <summary>
-        /// Open an actual handle to the current process rather than the pseudo one used for Current
-        /// </summary>
-        /// <returns>The process object</returns>
-        public static NtProcess OpenCurrent()
-        {
-            return Current.Duplicate();
-        }
-
-        /// <summary>
-        /// Get the current process.
-        /// </summary>
-        /// <remarks>This only uses the pseudo handle, for the process. If you need a proper handle use OpenCurrent.</remarks>
-        public static NtProcess Current { get => new NtProcess(new SafeKernelObjectHandle(new IntPtr(-1), false)); }
 
         /// <summary>
         /// Read memory from a process.
@@ -1713,16 +1085,47 @@ namespace NtApiDotNet
         /// Query all memory information regions in process memory.
         /// </summary>
         /// <returns>The list of memory regions.</returns>
+        /// <param name="type">Specify memory types to filter on.</param>
+        /// <param name="state">Set of flags which indicate the memory states to return.</param>
+        /// <exception cref="NtException">Thrown on error.</exception>
+        public IEnumerable<MemoryInformation> QueryAllMemoryInformation(MemoryType type, MemoryState state)
+        {
+            var mem_infos = NtVirtualMemory.QueryMemoryInformation(Handle);
+
+            if (state != MemoryState.All)
+            {
+                mem_infos = mem_infos.Where(m => m.State.HasFlagSet(state));
+            }
+
+            if (type != MemoryType.All)
+            {
+                mem_infos = mem_infos.Where(m => (m.Type & type) != MemoryType.None);
+            }
+
+            return mem_infos;
+        }
+
+        /// <summary>
+        /// Query all memory information regions in process memory.
+        /// </summary>
+        /// <returns>The list of memory regions.</returns>
+        /// <param name="include_free_regions">True to include free regions of memory.</param>
+        /// <param name="type">Specify memory types to filter on.</param>
+        /// <exception cref="NtException">Thrown on error.</exception>
+        public IEnumerable<MemoryInformation> QueryAllMemoryInformation(bool include_free_regions, MemoryType type)
+        {
+            return QueryAllMemoryInformation(type, MemoryState.Commit | MemoryState.Reserve | (include_free_regions ? MemoryState.Free : 0));
+        }
+
+        /// <summary>
+        /// Query all memory information regions in process memory.
+        /// </summary>
+        /// <returns>The list of memory regions.</returns>
         /// <param name="include_free_regions">True to include free regions of memory.</param>
         /// <exception cref="NtException">Thrown on error.</exception>
         public IEnumerable<MemoryInformation> QueryAllMemoryInformation(bool include_free_regions)
         {
-            IEnumerable<MemoryInformation> mem_infos = NtVirtualMemory.QueryMemoryInformation(Handle);
-            if (!include_free_regions)
-            {
-                return mem_infos.Where(m => m.State != MemoryState.Free);
-            }
-            return mem_infos;
+            return QueryAllMemoryInformation(include_free_regions, MemoryType.All);
         }
 
         /// <summary>
@@ -1772,13 +1175,32 @@ namespace NtApiDotNet
         /// <param name="region_size">The region size to allocate.</param>
         /// <param name="allocation_type">The type of allocation.</param>
         /// <param name="protect">The allocation protection.</param>
+        /// <param name="throw_on_error">True to throw on error.</param>
+        /// <returns>The address of the allocated region.</returns>
+        /// <exception cref="NtException">Thrown on error.</exception>
+        public NtResult<long> AllocateMemory(long base_address,
+            long region_size,
+            MemoryAllocationType allocation_type, MemoryAllocationProtect protect,
+            bool throw_on_error)
+        {
+            return NtVirtualMemory.AllocateMemory(Handle, base_address,
+                region_size, allocation_type, protect, throw_on_error);
+        }
+
+        /// <summary>
+        /// Allocate virtual memory in a process.
+        /// </summary>
+        /// <param name="base_address">Optional base address, if 0 will automatically select a base.</param>
+        /// <param name="region_size">The region size to allocate.</param>
+        /// <param name="allocation_type">The type of allocation.</param>
+        /// <param name="protect">The allocation protection.</param>
         /// <returns>The address of the allocated region.</returns>
         /// <exception cref="NtException">Thrown on error.</exception>
         public long AllocateMemory(long base_address,
             long region_size,
             MemoryAllocationType allocation_type, MemoryAllocationProtect protect)
         {
-            return NtVirtualMemory.AllocateMemory(Handle, base_address, region_size, allocation_type, protect);
+            return AllocateMemory(base_address, region_size, allocation_type, protect, true).Result;
         }
 
         /// <summary>
@@ -1807,6 +1229,19 @@ namespace NtApiDotNet
         }
 
         /// <summary>
+        /// Free virtual emmory in a process.
+        /// </summary>
+        /// <param name="base_address">Base address of region to free</param>
+        /// <param name="region_size">The size of the region.</param>
+        /// <param name="free_type">The type to free.</param>
+        /// <param name="throw_on_error">True to throw on error.</param>
+        /// <exception cref="NtException">Thrown on error.</exception>
+        public NtStatus FreeMemory(long base_address, long region_size, MemoryFreeType free_type, bool throw_on_error)
+        {
+            return NtVirtualMemory.FreeMemory(Handle, base_address, region_size, free_type, throw_on_error);
+        }
+
+        /// <summary>
         /// Change protection on a region of memory.
         /// </summary>
         /// <param name="base_address">The base address</param>
@@ -1822,33 +1257,101 @@ namespace NtApiDotNet
         }
 
         /// <summary>
+        /// Change protection on a region of memory.
+        /// </summary>
+        /// <param name="base_address">The base address</param>
+        /// <param name="region_size">The size of the memory region.</param>
+        /// <param name="new_protect">The new protection type.</param>
+        /// <param name="throw_on_error">True to throw on error.</param>
+        /// <returns>The old protection for the region.</returns>
+        /// <exception cref="NtException">Thrown on error.</exception>
+        public NtResult<MemoryAllocationProtect> ProtectMemory(long base_address,
+            long region_size, MemoryAllocationProtect new_protect, bool throw_on_error)
+        {
+            return NtVirtualMemory.ProtectMemory(Handle, base_address,
+                region_size, new_protect, throw_on_error);
+        }
+
+        /// <summary>
+        /// Query working set information for an address in a process.
+        /// </summary>
+        /// <param name="base_address">The base address to query.</param>
+        /// <param name="throw_on_error">True to throw on error</param>
+        /// <returns>The working set information.</returns>
+        /// <exception cref="NtException">Thrown on error.</exception>
+        public NtResult<MemoryWorkingSetExInformation> QueryWorkingSetEx(long base_address, bool throw_on_error)
+        {
+            return NtVirtualMemory.QueryWorkingSetEx(Handle, base_address, throw_on_error);
+        }
+
+        /// <summary>
+        /// Query working set information for an address in a process.
+        /// </summary>
+        /// <param name="base_address">The base address to query.</param>
+        /// <returns>The working set information.</returns>
+        /// <exception cref="NtException">Thrown on error.</exception>
+        public MemoryWorkingSetExInformation QueryWorkingSetEx(long base_address)
+        {
+            return QueryWorkingSetEx(base_address, true).Result;
+        }
+
+        /// <summary>
         /// Set the process device map.
         /// </summary>
         /// <param name="device_map">The device map directory to set.</param>
         /// <remarks>Note that due to a bug in the Wow64 layer this won't work in a 32 bit process on a 64 bit system.</remarks>
-        public void SetProcessDeviceMap(NtDirectory device_map)
+        public void SetDeviceMap(NtDirectory device_map)
+        {
+            SetDeviceMap(device_map, true);
+        }
+
+        /// <summary>
+        /// Set the process device map.
+        /// </summary>
+        /// <param name="device_map">The device map directory to set.</param>
+        /// <param name="throw_on_error">True to throw on error.</param>
+        /// <remarks>Note that due to a bug in the Wow64 layer this won't work in a 32 bit process on a 64 bit system.</remarks>
+        public NtStatus SetDeviceMap(NtDirectory device_map, bool throw_on_error)
         {
             var device_map_set = new ProcessDeviceMapInformationSet
             {
                 DirectoryHandle = device_map.Handle.DangerousGetHandle()
             };
 
-            using (var buffer = device_map_set.ToBuffer())
-            {
-                NtSystemCalls.NtSetInformationProcess(Handle, ProcessInformationClass.ProcessDeviceMap, buffer, buffer.Length).ToNtException();
-            }
+            return Set(ProcessInformationClass.ProcessDeviceMap, device_map_set, throw_on_error);
         }
 
         /// <summary>
-        /// Get whether process has a debug port.
+        /// Set the process device map.
         /// </summary>
-        /// <returns></returns>
-        public bool HasDebugPort
+        /// <param name="device_map">The device map directory to set.</param>
+        /// <remarks>Note that due to a bug in the Wow64 layer this won't work in a 32 bit process on a 64 bit system.</remarks>
+        [Obsolete("Use SetDeviceMap")]
+        public void SetProcessDeviceMap(NtDirectory device_map)
         {
-            get
-            {
-                return QueryFixed<IntPtr>(ProcessInformationClass.ProcessDebugPort) != IntPtr.Zero;
-            }
+            SetDeviceMap(device_map);
+        }
+
+        /// <summary>
+        /// Set the process device map.
+        /// </summary>
+        /// <param name="device_map">The device map directory to set.</param>
+        /// <param name="throw_on_error">True to throw on error.</param>
+        /// <remarks>Note that due to a bug in the Wow64 layer this won't work in a 32 bit process on a 64 bit system.</remarks>
+        [Obsolete("Use SetDeviceMap")]
+        public NtStatus SetProcessDeviceMap(NtDirectory device_map, bool throw_on_error)
+        {
+            return SetDeviceMap(device_map, throw_on_error);
+        }
+
+        /// <summary>
+        /// Open a process' debug object.
+        /// </summary>
+        /// <param name="throw_on_error">True to throw on error.</param>
+        /// <returns>The process' debug object.</returns>
+        public NtResult<NtDebug> OpenDebugObject(bool throw_on_error)
+        {
+            return Query(ProcessInformationClass.ProcessDebugObjectHandle, IntPtr.Zero, throw_on_error).Map(r => NtDebug.FromHandle(r, true));
         }
 
         /// <summary>
@@ -1857,74 +1360,7 @@ namespace NtApiDotNet
         /// <returns>The process' debug object.</returns>
         public NtDebug OpenDebugObject()
         {
-            return new NtDebug(new SafeKernelObjectHandle(QueryFixed<IntPtr>(ProcessInformationClass.ProcessDebugObjectHandle), true));
-        }
-
-        /// <summary>
-        /// Get handle count.
-        /// </summary>
-        public int HandleCount
-        {
-            get
-            {
-                // Weirdly if you query for 8 bytes it just returns count in upper and lower bits.
-                return QueryFixed<int>(ProcessInformationClass.ProcessHandleCount);
-            }
-        }
-
-        /// <summary>
-        /// Get break on termination flag.
-        /// </summary>
-        public bool BreakOnTermination
-        {
-            get
-            {
-                return QueryFixed<int>(ProcessInformationClass.ProcessBreakOnTermination) != 0;
-            }
-        }
-
-        /// <summary>
-        /// Get debug flags.
-        /// </summary>
-        public int DebugFlags
-        {
-            get
-            {
-                return QueryFixed<int>(ProcessInformationClass.ProcessDebugFlags);
-            }
-        }
-
-        /// <summary>
-        /// Get execute flags.
-        /// </summary>
-        public int ExecuteFlags
-        {
-            get
-            {
-                return QueryFixed<int>(ProcessInformationClass.ProcessExecuteFlags);
-            }
-        }
-
-        /// <summary>
-        /// Get IO priority.
-        /// </summary>
-        public int IoPriority
-        {
-            get
-            {
-                return QueryFixed<int>(ProcessInformationClass.ProcessIoPriority);
-            }
-        }
-
-        /// <summary>
-        /// Get secure cookie.
-        /// </summary>
-        public int Cookie
-        {
-            get
-            {
-                return QueryFixed<int>(ProcessInformationClass.ProcessCookie);
-            }
+            return OpenDebugObject(true).Result;
         }
 
         /// <summary>
@@ -1934,23 +1370,19 @@ namespace NtApiDotNet
         /// <returns>True if the process is created from the image file.</returns>
         public bool IsImageFile(NtFile file)
         {
-            using (var buf = file.Handle.DangerousGetHandle().ToBuffer())
-            {
-                int return_length;
-                return NtSystemCalls.NtQueryInformationProcess(Handle,
-                    ProcessInformationClass.ProcessImageFileMapping, buf, buf.Length, out return_length).IsSuccess();
-            }
+            return Query(ProcessInformationClass.ProcessImageFileMapping, file.Handle.DangerousGetHandle(), false).IsSuccess;
         }
 
         /// <summary>
-        /// Get owner process ID
+        /// Open parent process by ID.
         /// </summary>
-        public int OwnerProcessId
+        /// <param name="desired_access">The desired process access rights.</param>
+        /// <param name="throw_on_error">True to throw on error.</param>
+        /// <returns>The opened process.</returns>
+        /// <exception cref="NtException">Thrown on error.</exception>
+        public NtResult<NtProcess> OpenParent(ProcessAccessRights desired_access, bool throw_on_error)
         {
-            get
-            {
-                return QueryFixed<IntPtr>(ProcessInformationClass.ProcessConsoleHostProcess).ToInt32();
-            }
+            return Open(ParentProcessId, desired_access, throw_on_error);
         }
 
         /// <summary>
@@ -1961,7 +1393,7 @@ namespace NtApiDotNet
         /// <exception cref="NtException">Thrown on error.</exception>
         public NtProcess OpenParent(ProcessAccessRights desired_access)
         {
-            return Open(ParentProcessId, desired_access);
+            return OpenParent(desired_access, true).Result;
         }
 
         /// <summary>
@@ -1978,11 +1410,23 @@ namespace NtApiDotNet
         /// Open owner process by ID.
         /// </summary>
         /// <param name="desired_access">The desired process access rights.</param>
+        /// <param name="throw_on_error">True to throw on error.</param>
+        /// <returns>The opened process.</returns>
+        /// <exception cref="NtException">Thrown on error.</exception>
+        public NtResult<NtProcess> OpenOwner(ProcessAccessRights desired_access, bool throw_on_error)
+        {
+            return Open(OwnerProcessId, desired_access, throw_on_error);
+        }
+
+        /// <summary>
+        /// Open owner process by ID.
+        /// </summary>
+        /// <param name="desired_access">The desired process access rights.</param>
         /// <returns>The opened process.</returns>
         /// <exception cref="NtException">Thrown on error.</exception>
         public NtProcess OpenOwner(ProcessAccessRights desired_access)
         {
-            return Open(OwnerProcessId, desired_access);
+            return OpenOwner(desired_access, true).Result; ;
         }
 
         /// <summary>
@@ -1996,72 +1440,6 @@ namespace NtApiDotNet
         }
 
         /// <summary>
-        /// Get process window title (from Process Parameters).
-        /// </summary>
-        public string WindowTitle
-        {
-            get
-            {
-                using (var buf = Query<ProcessWindowInformation>(ProcessInformationClass.ProcessWindowInformation))
-                {
-                    ProcessWindowInformation window_info = buf.Result;
-                    return buf.Data.ReadUnicodeString(window_info.WindowTitleLength / 2);
-                }
-            }
-        }
-
-        /// <summary>
-        /// Get process window flags (from Process Parameters).
-        /// </summary>
-        public uint WindowFlags
-        {
-            get
-            {
-                using (var buf = Query<ProcessWindowInformation>(ProcessInformationClass.ProcessWindowInformation))
-                {
-                    return buf.Result.WindowFlags;
-                }
-            }
-        }
-
-        /// <summary>
-        /// Get the process subsystem type.
-        /// </summary>
-        public ProcessSubsystemInformationType SubsystemType
-        {
-            get
-            {
-                return (ProcessSubsystemInformationType)QueryFixed<int>(ProcessInformationClass.ProcessSubsystemInformation);
-            }
-        }
-
-        /// <summary>
-        /// Get if the process is Wow64
-        /// </summary>
-        public bool Wow64
-        {
-            get
-            {
-                if (!_wow64.HasValue)
-                {
-                    _wow64 = QueryFixed<IntPtr>(ProcessInformationClass.ProcessWow64Information) != IntPtr.Zero;
-                }
-                return _wow64.Value;
-            }
-        }
-
-        /// <summary>
-        /// Get whether the process is 64bit.
-        /// </summary>
-        public bool Is64Bit
-        {
-            get
-            {
-                return Environment.Is64BitOperatingSystem && !Wow64;
-            }
-        }
-
-        /// <summary>
         /// Get if process is in a job.
         /// </summary>
         /// <param name="job">A specific job to check</param>
@@ -2069,8 +1447,7 @@ namespace NtApiDotNet
         public bool IsInJob(NtJob job)
         {
             return NtSystemCalls.NtIsProcessInJob(Handle,
-                job == null ? SafeKernelObjectHandle.Null : job.Handle)
-                        == NtStatus.STATUS_PROCESS_IN_JOB;
+                job.GetHandle()) == NtStatus.STATUS_PROCESS_IN_JOB;
         }
 
         /// <summary>
@@ -2101,6 +1478,47 @@ namespace NtApiDotNet
         }
 
         /// <summary>
+        /// Get handles for process.
+        /// </summary>
+        /// <param name="allow_query">Specify to all name/details to be queried from the handle.</param>
+        /// <param name="throw_on_error">True to throw on error.</param>
+        /// <returns>The list of handles.</returns>
+        /// <remarks>This queries the handles from the process which does not contain the Object's addres in kernel memory.</remarks>
+        public NtResult<IEnumerable<NtHandle>> GetHandles(bool allow_query, bool throw_on_error)
+        {
+            using (var buffer = QueryBuffer<ProcessHandleSnapshotInformation>(ProcessInformationClass.ProcessHandleInformation, default, throw_on_error))
+            {
+                if (!buffer.IsSuccess)
+                    return buffer.Cast<IEnumerable<NtHandle>>();
+                var info = buffer.Result;
+                ProcessHandleTableEntryInfo[] handles = new ProcessHandleTableEntryInfo[info.Result.NumberOfHandles.ToInt32()];
+                info.Data.ReadArray(0, handles, 0, handles.Length);
+                return handles.Select(h => new NtHandle(ProcessId, h, allow_query)).ToArray().CreateResult<IEnumerable<NtHandle>>();
+            }
+        }
+
+        /// <summary>
+        /// Get handles for process.
+        /// </summary>
+        /// <param name="allow_query">Specify to all name/details to be queried from the handle.</param>
+        /// <returns>The list of handles.</returns>
+        /// <remarks>This queries the handles from the process which does not contain the Object's addres in kernel memory.</remarks>
+        public IEnumerable<NtHandle> GetHandles(bool allow_query)
+        {
+            return GetHandles(allow_query, true).Result;
+        }
+
+        /// <summary>
+        /// Get handles for process.
+        /// </summary>
+        /// <returns>The list of handles.</returns>
+        /// <remarks>This queries the handles from the process which does not contain the Object's addres in kernel memory.</remarks>
+        public IEnumerable<NtHandle> GetHandles()
+        {
+            return GetHandles(true);
+        }
+
+        /// <summary>
         /// Get the process handle table and try and get them as objects.
         /// </summary>
         /// <param name="named_only">True to only return named objects</param>
@@ -2122,7 +1540,7 @@ namespace NtApiDotNet
                 {
                     using (NtGeneric generic = NtGeneric.DuplicateFrom(this, new IntPtr(handle)))
                     {
-                        if (named_only && generic.FullPath == String.Empty)
+                        if (named_only && generic.FullPath == string.Empty)
                         {
                             continue;
                         }
@@ -2153,62 +1571,15 @@ namespace NtApiDotNet
         }
 
         /// <summary>
-        /// Get the process handle table and try and get them as objects.
+        /// Open image section for process.
         /// </summary>
-        /// <returns>The list of handles as objects.</returns>
-        /// <remarks>This function will drop handles it can't duplicate.</remarks>
-        public bool IsChildProcessRestricted
+        /// <param name="throw_on_error">True to throw on error.</param>
+        /// <returns>The opened image section.</returns>
+        /// <remarks>Should only work on the pseudo process handle.</remarks>
+        public NtResult<NtSection> OpenImageSection(bool throw_on_error)
         {
-            get
-            {
-                int policy = GetProcessMitigationPolicy(ProcessMitigationPolicy.ChildProcess);
-                if (policy != 0)
-                {
-                    return (policy & 1) == 1;
-                }
-
-                var result = QueryFixed<ProcessChildProcessRestricted>(ProcessInformationClass.ProcessChildProcessInformation, false);
-                if (result.IsSuccess)
-                {
-                    return result.Result.IsNoChildProcessRestricted != 0;
-                }
-                var result_1709 = QueryFixed<ProcessChildProcessRestricted1709>(ProcessInformationClass.ProcessChildProcessInformation, false);
-                if (result_1709.IsSuccess)
-                {
-                    return result_1709.Result.IsNoChildProcessRestricted != 0;
-                }
-                return false;
-            }
-        }
-
-        /// <summary>
-        /// Gets whether the process is currently deleting.
-        /// </summary>
-        public bool IsDeleting
-        {
-            get { return (ExtendedFlags & ProcessExtendedBasicInformationFlags.IsProcessDeleting) == ProcessExtendedBasicInformationFlags.IsProcessDeleting; }
-        }
-
-        /// <summary>
-        /// Get process protection information.
-        /// </summary>
-        public PsProtection Protection
-        {
-            get
-            {
-                return QueryFixed<PsProtection>(ProcessInformationClass.ProcessProtectionInformation);
-            }
-        }
-
-        /// <summary>
-        /// Query process section image information.
-        /// </summary>
-        public SectionImageInformation ImageInformation
-        {
-            get
-            {
-                return QueryFixed<SectionImageInformation>(ProcessInformationClass.ProcessImageInformation);
-            }
+            return Query(ProcessInformationClass.ProcessImageSection,
+                IntPtr.Zero, throw_on_error).Map(r => NtSection.FromHandle(r, true));
         }
 
         /// <summary>
@@ -2218,31 +1589,640 @@ namespace NtApiDotNet
         /// <remarks>Should only work on the pseudo process handle.</remarks>
         public NtSection OpenImageSection()
         {
-            return NtSection.FromHandle(new SafeKernelObjectHandle(QueryFixed<IntPtr>(ProcessInformationClass.ProcessImageSection), true));
+            return OpenImageSection(true).Result;
         }
+
+        /// <summary>
+        /// Unmap a section.
+        /// </summary>
+        /// <param name="base_address">The base address to unmap.</param>
+        /// <param name="flags">Flags for unmapping memory.</param>
+        /// <param name="throw_on_error">True to throw on error.</param>
+        /// <returns>The NT status code.</returns>
+        public NtStatus Unmap(IntPtr base_address, MemUnmapFlags flags, bool throw_on_error)
+        {
+            return NtSection.Unmap(this, base_address, flags, throw_on_error);
+        }
+
+        /// <summary>
+        /// Unmap a section.
+        /// </summary>
+        /// <param name="base_address">The base address to unmap.</param>
+        /// <param name="throw_on_error">True to throw on error.</param>
+        /// <returns>The NT status code.</returns>
+        public NtStatus Unmap(IntPtr base_address, bool throw_on_error)
+        {
+            return Unmap(base_address, MemUnmapFlags.None, throw_on_error);
+        }
+
+        /// <summary>
+        /// Unmap a section.
+        /// </summary>
+        /// <param name="base_address">The base address to unmap.</param>
+        /// <param name="flags">Flags for unmapping memory.</param>
+        public void Unmap(IntPtr base_address, MemUnmapFlags flags)
+        {
+            Unmap(base_address, flags, true);
+        }
+
+        /// <summary>
+        /// Unmap a section.
+        /// </summary>
+        /// <param name="base_address">The base address to unmap.</param>
+        public void Unmap(IntPtr base_address)
+        {
+            Unmap(base_address, true);
+        }
+
+        /// <summary>
+        /// Get the user SID for the process.
+        /// </summary>
+        /// <param name="throw_on_error">True to throw on error.</param>
+        /// <returns>The user SID.</returns>
+        public NtResult<Sid> GetUser(bool throw_on_error)
+        {
+            using (var token = OpenToken(TokenAccessRights.Query, throw_on_error))
+            {
+                return token.Map(t => t.User.Sid);
+            }
+        }
+
+        /// <summary>
+        /// Get the user SID for the process.
+        /// </summary>
+        /// <returns>The user SID.</returns>
+        public Sid GetUser()
+        {
+            return GetUser(true).Result;
+        }
+
+        /// <summary>
+        /// Set process fault flags.
+        /// </summary>
+        /// <param name="flags">The flags to set.</param>
+        /// <param name="throw_on_error">True to throw on error.</param>
+        /// <returns>The NT status code for the operation.</returns>
+        public NtStatus SetFaultFlags(ProcessFaultFlags flags, bool throw_on_error)
+        {
+            return Set(ProcessInformationClass.ProcessFaultInformation, new ProcessFaultInformation() { FaultFlags = flags }, throw_on_error);
+        }
+
+        /// <summary>
+        /// Set process fault flags.
+        /// </summary>
+        /// <param name="flags">The flags to set.</param>
+        /// <returns>The NT status code for the operation.</returns>
+        public void SetFaultFlags(ProcessFaultFlags flags)
+        {
+            SetFaultFlags(flags, true);
+        }
+
+        /// <summary>
+        /// Set the process exception port.
+        /// </summary>
+        /// <param name="exception_port">The exception port to set.</param>
+        /// <param name="state_flags">Additional state flags.</param>
+        /// <param name="throw_on_error">True to throw on error.</param>
+        /// <returns>The NT status code.</returns>
+        public NtStatus SetExceptionPort(NtAlpc exception_port, int state_flags, bool throw_on_error)
+        {
+            ProcessExceptionPort port = new ProcessExceptionPort()
+            {
+                ExceptionPortHandle = exception_port.Handle.DangerousGetHandle(),
+                StateFlags = state_flags
+            };
+            return Set(ProcessInformationClass.ProcessExceptionPort, port, throw_on_error);
+        }
+
+        /// <summary>
+        /// Set the process exception port.
+        /// </summary>
+        /// <param name="exception_port">The exception port to set.</param>
+        /// <param name="throw_on_error">True to throw on error.</param>
+        /// <returns>The NT status code.</returns>
+        public NtStatus SetExceptionPort(NtAlpc exception_port, bool throw_on_error)
+        {
+            return Set(ProcessInformationClass.ProcessExceptionPort, exception_port.Handle.DangerousGetHandle(), throw_on_error);
+        }
+
+        /// <summary>
+        /// Set the process exception port.
+        /// </summary>
+        /// <param name="exception_port">The exception port to set.</param>
+        /// <returns>The NT status code.</returns>
+        public void SetExceptionPort(NtAlpc exception_port)
+        {
+            SetExceptionPort(exception_port, true);
+        }
+
+        /// <summary>
+        /// Get the user process parameters.
+        /// </summary>
+        /// <returns>The user process parameters.</returns>
+        public NtUserProcessParameters GetUserProcessParameters()
+        {
+            if (!Environment.Is64BitProcess && Is64Bit)
+            {
+                throw new ArgumentException("Do not support 32 to 64 bit reading.");
+            }
+
+            var peb = GetPeb();
+            var params_ptr = peb.GetProcessParameters().ToInt64();
+            if (params_ptr == 0)
+                throw new NtException(NtStatus.STATUS_INSUFFICIENT_RESOURCES);
+
+            var header = ReadMemory<RtlUserProcessParametersHeader>(params_ptr);
+            byte[] bytes = ReadMemory(params_ptr, header.Length);
+            RtlUserProcessParameters user_params;
+            if (Environment.Is64BitProcess != Is64Bit)
+            {
+                using (var buffer = new SafeStructureInOutBuffer<RtlUserProcessParameters32>())
+                {
+                    buffer.FillBuffer(0);
+                    buffer.WriteArray(0, bytes, 0, Math.Min(bytes.Length, buffer.Length));
+                    user_params = buffer.Result.Convert();
+                }
+            }
+            else
+            {
+                using (var buffer = new SafeStructureInOutBuffer<RtlUserProcessParameters>())
+                {
+                    buffer.FillBuffer(0);
+                    buffer.WriteArray(0, bytes, 0, Math.Min(bytes.Length, buffer.Length));
+                    user_params = buffer.Result;
+                }
+            }
+            return user_params.ToObject(this);
+        }
+
+        /// <summary>
+        /// Fork the process.
+        /// </summary>
+        /// <param name="flags">Extra flags for fork.</param>
+        /// <param name="throw_on_error">True to throw on error.</param>
+        /// <returns>The new forked process result.</returns>
+        /// <remarks>This uses NtCreateProcessEx.</remarks>
+        public NtResult<NtProcess> Fork(ProcessCreateFlags flags, bool throw_on_error)
+        {
+            return CreateProcessEx(ProcessAccessRights.MaximumAllowed, null,
+                this, flags | ProcessCreateFlags.InheritFromParent, null, null, null, throw_on_error);
+        }
+
+        /// <summary>
+        /// Fork the process.
+        /// </summary>
+        /// <param name="flags">Extra flags for fork.</param>
+        /// <returns>The new forked process result.</returns>
+        /// <remarks>This uses NtCreateProcessEx.</remarks>
+        public NtProcess Fork(ProcessCreateFlags flags)
+        {
+            return Fork(flags, true).Result;
+        }
+
+        /// <summary>
+        /// Fork the process.
+        /// </summary>
+        /// <returns>The new forked process result.</returns>
+        /// <remarks>This uses NtCreateProcessEx.</remarks>
+        public NtProcess Fork()
+        {
+            return Fork(ProcessCreateFlags.None);
+        }
+
+        /// <summary>
+        /// Get the accessible job objects this process is in.
+        /// </summary>
+        /// <remarks>This tries to find accessible Job handles. There's no guarantee that all Job objects will be found for the process.</remarks>
+        /// <returns>The list of job objects.</returns>
+        public IEnumerable<NtJob> GetAccessibleJobObjects()
+        {
+            if (!IsInJob())
+                yield break;
+            foreach (var h in NtSystemInfo.GetHandles())
+            {
+                if (h.ObjectType == "Job")
+                {
+                    using (var result = h.GetObject(false).Cast<NtJob>())
+                    {
+                        if (!result.IsSuccess || !IsInJob(result.Result))
+                        {
+                            continue;
+                        }
+                        yield return result.Result.Duplicate();
+                    }
+                }
+            }
+        }
+
+        /// <summary>
+        /// Set thread intelligence logging flags.
+        /// </summary>
+        /// <param name="flags">The flags to set.</param>
+        /// <param name="throw_on_error">True to throw on error.</param>
+        /// <returns>The NT status code.</returns>
+        public NtStatus SetProcessLogging(ProcessLoggingFlags flags, bool throw_on_error)
+        {
+            ProcessInformationClass info_class;
+            if ((flags & (ProcessLoggingFlags.ProcessSuspendResume | ProcessLoggingFlags.ThreadSuspendResume)) != 0)
+            {
+                info_class = ProcessInformationClass.ProcessEnableLogging;
+            }
+            else
+            {
+                info_class = ProcessInformationClass.ProcessEnableReadWriteVmLogging;
+            }
+
+            return Set(info_class, (int)flags, throw_on_error);
+        }
+
+        /// <summary>
+        /// Set thread intelligence logging flags.
+        /// </summary>
+        /// <param name="flags">The flags to set.</param>
+        public void SetProcessLogging(ProcessLoggingFlags flags)
+        {
+            SetProcessLogging(flags, true);
+        }
+
+        /// <summary>
+        /// Get the process security domain.
+        /// </summary>
+        /// <param name="throw_on_error">True to throw on error.</param>
+        /// <returns>The security domain.</returns>
+        public NtResult<long> GetSecurityDomain(bool throw_on_error)
+        {
+            return Query(ProcessInformationClass.ProcessSecurityDomainInformation,
+                new ProcessSecurityDomainInformation(), throw_on_error).Map(r => r.SecurityDomain);
+        }
+
+        /// <summary>
+        /// Get the process security domain.
+        /// </summary>
+        /// <returns>The security domain.</returns>
+        public long GetSecurityDomain()
+        {
+            return GetSecurityDomain(true).Result;
+        }
+
+        /// <summary>
+        /// Combine two process' security domains.
+        /// </summary>
+        /// <param name="process">The process to combine with. Needs QueryLimitedInformation.</param>
+        /// <param name="throw_on_error">True to throw on error.</param>
+        /// <returns>The NT status code.</returns>
+        /// <remarks>The current process need SetLimitedInformation access.</remarks>
+        public NtStatus CombineSecurityDomain(NtProcess process, bool throw_on_error)
+        {
+            var info = new ProcessCombineSecurityDomainInformation()
+            {
+                ProcessHandle = process.Handle.DangerousGetHandle()
+            };
+            return Set(ProcessInformationClass.ProcessCombineSecurityDomainsInformation, info, throw_on_error);
+        }
+
+        /// <summary>
+        /// Combine two process' security domains.
+        /// </summary>
+        /// <param name="process">The process to combine with. Needs QueryLimitedInformation.</param>
+        /// <remarks>The current process need SetLimitedInformation access.</remarks>
+        public void CombineSecurityDomain(NtProcess process)
+        {
+            CombineSecurityDomain(process, true);
+        }
+
+        /// <summary>
+        /// Get the session ID for the process.
+        /// </summary>
+        /// <param name="throw_on_error">True to throw on error.</param>
+        /// <returns>The session ID.</returns>
+        public NtResult<int> GetSessionId(bool throw_on_error)
+        {
+            return Query<ProcessSessionInformation>(ProcessInformationClass.ProcessSessionInformation, 
+                default, throw_on_error).Map(s => s.SessionId);
+        }
+
+        /// <summary>
+        /// Test whether the current process can access another protected process.
+        /// </summary>
+        /// <param name="target">The target process.</param>
+        /// <returns>True if the process can be accessed.</returns>
+        public bool TestProtectedAccess(NtProcess target)
+        {
+            return TestProtectedAccess(this, target);
+        }
+
+        /// <summary>
+        /// Get the environment from the process.
+        /// </summary>
+        /// <returns>List of environment variables.</returns>
+        public IReadOnlyList<NtProcessEnvironmentVariable> GetEnvironment()
+        {
+            var proc_params = GetUserProcessParameters();
+            int env_size;
+            if (NtObjectUtils.SupportedVersion < SupportedVersion.Windows10_RS5)
+            {
+                var mem_info = QueryMemoryInformation(proc_params.Environment.ToInt64());
+                long curr_size = mem_info.RegionSize - (proc_params.Environment.ToInt64() - mem_info.BaseAddress);
+                env_size = (int)curr_size;
+            }
+            else
+            {
+                env_size = proc_params.EnvironmentSize.ToInt32();
+            }
+
+            return NtProcessEnvironmentVariable.ParseEnvironmentBlock(
+                ReadMemory(proc_params.Environment.ToInt64(), env_size, true)).ToList().AsReadOnly();
+        }
+
+        /// <summary>
+        /// Method to query information for this object type.
+        /// </summary>
+        /// <param name="info_class">The information class.</param>
+        /// <param name="buffer">The buffer to return data in.</param>
+        /// <param name="return_length">Return length from the query.</param>
+        /// <returns>The NT status code for the query.</returns>
+        public override NtStatus QueryInformation(ProcessInformationClass info_class, SafeBuffer buffer, out int return_length)
+        {
+            return NtSystemCalls.NtQueryInformationProcess(Handle, info_class, buffer, buffer.GetLength(), out return_length);
+        }
+
+        /// <summary>
+        /// Method to set information for this object type.
+        /// </summary>
+        /// <param name="info_class">The information class.</param>
+        /// <param name="buffer">The buffer to set data from.</param>
+        /// <returns>The NT status code for the set.</returns>
+        public override NtStatus SetInformation(ProcessInformationClass info_class, SafeBuffer buffer)
+        {
+            return NtSystemCalls.NtSetInformationProcess(Handle, info_class, buffer, buffer.GetLength());
+        }
+
+        #endregion
+
+        #region Public Properties
+
+        /// <summary>
+        /// Get the process' session ID
+        /// </summary>
+        public int SessionId => GetSessionId(true).Result;
+
+        /// <summary>
+        /// Get the process' ID
+        /// </summary>
+        public int ProcessId
+        {
+            get
+            {
+                if (!_pid.HasValue)
+                {
+                    _pid = GetBasicInfo().UniqueProcessId.ToInt32();
+                }
+                return _pid.Value;
+            }
+        }
+
+        /// <summary>
+        /// Get the process' parent process ID
+        /// </summary>
+        public int ParentProcessId => GetBasicInfo().InheritedFromUniqueProcessId.ToInt32();
+
+        /// <summary>
+        /// Get the memory address of the PEB
+        /// </summary>
+        public IntPtr PebAddress => GetBasicInfo().PebBaseAddress;
+
+        /// <summary>
+        /// Get the memory address of the PEB for a 32 bit process.
+        /// </summary>
+        /// <remarks>If the process is 64 bit, or the OS is 32 bit this returns the same value as PebAddress.</remarks>
+        public IntPtr PebAddress32
+        {
+            get
+            {
+                if (!Wow64)
+                {
+                    return PebAddress;
+                }
+                return Query<IntPtr>(ProcessInformationClass.ProcessWow64Information);
+            }
+        }
+
+        /// <summary>
+        /// Get the base address of the process from the PEB.
+        /// </summary>
+        public IntPtr ImageBaseAddress => GetPeb().GetImageBaseAddress();
+
+        /// <summary>
+        /// Read flags from PEB.
+        /// </summary>
+        public PebFlags PebFlags => GetPeb().GetPebFlags();
+
+        /// <summary>
+        /// Get the process' exit status.
+        /// </summary>
+        public int ExitStatus => GetExtendedBasicInfo(false).BasicInfo.ExitStatus;
+
+        /// <summary>
+        /// Get the process' exit status as an NtStatus code.
+        /// </summary>
+        public NtStatus ExitNtStatus => (NtStatus)ExitStatus;
+
+        /// <summary>
+        /// Get the process' command line
+        /// </summary>
+        public string CommandLine
+        {
+            get
+            {
+                using (var result = QueryBuffer(ProcessInformationClass.ProcessCommandLineInformation, new UnicodeStringOut(), false))
+                {
+                    // This will fail if process is being torn down, just return an empty string.
+                    if (result.Status == NtStatus.STATUS_PROCESS_IS_TERMINATING
+                        || result.Status == NtStatus.STATUS_PARTIAL_COPY
+                        || result.Status == NtStatus.STATUS_NOT_FOUND)
+                    {
+                        return string.Empty;
+                    }
+
+                    return result.GetResultOrThrow().Result.ToString();
+                }
+            }
+        }
+
+        /// <summary>
+        /// Get the command line as parsed arguments.
+        /// </summary>
+        public string[] CommandLineArguments => Win32Utils.ParseCommandLine(CommandLine);
+
+        /// <summary>
+        /// Get process DEP status
+        /// </summary>
+        public ProcessDepStatus DepStatus
+        {
+            get
+            {
+                using (SafeStructureInOutBuffer<uint> buffer = new SafeStructureInOutBuffer<uint>())
+                {
+                    ProcessDepStatus ret = new ProcessDepStatus();
+                    NtStatus status = NtSystemCalls.NtQueryInformationProcess(Handle, ProcessInformationClass.ProcessExecuteFlags, buffer, buffer.Length, out int return_length);
+                    if (!status.IsSuccess())
+                    {
+                        if (status != NtStatus.STATUS_INVALID_PARAMETER)
+                        {
+                            status.ToNtException();
+                        }
+                        else if (Is64Bit)
+                        {
+                            // On 64 bits OS, DEP is always ON for 64 bits processes
+                            ret.Enabled = true;
+                            ret.Permanent = true;
+                        }
+
+                        return ret;
+                    }
+
+                    uint result = buffer.Result;
+                    if ((result & 2) == 0)
+                    {
+                        ret.Enabled = true;
+                        if ((result & 4) != 0)
+                        {
+                            ret.DisableAtlThunkEmulation = true;
+                        }
+                    }
+                    if ((result & 8) != 0)
+                    {
+                        ret.Permanent = true;
+                    }
+                    return ret;
+                }
+            }
+        }
+
+        /// <summary>
+        /// Get whether process has a debug port.
+        /// </summary>
+        /// <returns></returns>
+        public bool HasDebugPort => Query<IntPtr>(ProcessInformationClass.ProcessDebugPort) != IntPtr.Zero;
+
+        /// <summary>
+        /// Get handle count.
+        /// </summary>
+        public int HandleCount =>
+                // Weirdly if you query for 8 bytes it just returns count in upper and lower bits.
+                Query<int>(ProcessInformationClass.ProcessHandleCount);
+
+        /// <summary>
+        /// Get break on termination flag.
+        /// </summary>
+        public bool BreakOnTermination => Query<int>(ProcessInformationClass.ProcessBreakOnTermination) != 0;
+
+        /// <summary>
+        /// Get or set debug flags.
+        /// </summary>
+        public ProcessDebugFlags DebugFlags
+        {
+            get => (ProcessDebugFlags)Query<int>(ProcessInformationClass.ProcessDebugFlags);
+            set => Set(ProcessInformationClass.ProcessDebugFlags, (int)value);
+        }
+
+        /// <summary>
+        /// Get or set execute flags.
+        /// </summary>
+        public ProcessExecuteFlags ExecuteFlags
+        {
+            get => (ProcessExecuteFlags)Query<int>(ProcessInformationClass.ProcessExecuteFlags);
+            set => Set(ProcessInformationClass.ProcessExecuteFlags, (int)value);
+        }
+
+        /// <summary>
+        /// Get IO priority.
+        /// </summary>
+        public int IoPriority => Query<int>(ProcessInformationClass.ProcessIoPriority);
+
+        /// <summary>
+        /// Get secure cookie.
+        /// </summary>
+        public int Cookie => Query<int>(ProcessInformationClass.ProcessCookie);
+
+        /// <summary>
+        /// Get the process user.
+        /// </summary>
+        public Sid User => GetUser();
+
+        /// <summary>
+        /// Get process mitigations
+        /// </summary>
+        public NtProcessMitigations Mitigations => new NtProcessMitigations(this);
+
+        /// <summary>
+        /// Get extended process flags.
+        /// </summary>
+        public ProcessExtendedBasicInformationFlags ExtendedFlags => GetExtendedBasicInfo(false).Flags;
+
+        /// <summary>
+        /// Get process window title (from Process Parameters).
+        /// </summary>
+        public string WindowTitle
+        {
+            get
+            {
+                using (var buf = QueryBuffer<ProcessWindowInformation>(ProcessInformationClass.ProcessWindowInformation))
+                {
+                    ProcessWindowInformation window_info = buf.Result;
+                    return buf.Data.ReadUnicodeString(window_info.WindowTitleLength / 2);
+                }
+            }
+        }
+
+        /// <summary>
+        /// Get process window flags (from Process Parameters).
+        /// </summary>
+        public uint WindowFlags
+        {
+            get
+            {
+                using (var buf = QueryBuffer<ProcessWindowInformation>(ProcessInformationClass.ProcessWindowInformation))
+                {
+                    return buf.Result.WindowFlags;
+                }
+            }
+        }
+
+        /// <summary>
+        /// Get the process subsystem type.
+        /// </summary>
+        public ProcessSubsystemInformationType SubsystemType => (ProcessSubsystemInformationType)Query<int>(ProcessInformationClass.ProcessSubsystemInformation);
+
+        /// <summary>
+        /// Get if the process is Wow64
+        /// </summary>
+        public bool Wow64
+        {
+            get
+            {
+                if (!_wow64.HasValue)
+                {
+                    _wow64 = Query<IntPtr>(ProcessInformationClass.ProcessWow64Information) != IntPtr.Zero;
+                }
+                return _wow64.Value;
+            }
+        }
+
+        /// <summary>
+        /// Get whether the process is 64bit.
+        /// </summary>
+        public bool Is64Bit => Environment.Is64BitOperatingSystem && !Wow64;
 
         /// <summary>
         /// Get whether LUID device maps are enabled.
         /// </summary>
-        public bool LUIDDeviceMapsEnabled
-        {
-            get
-            {
-                return QueryFixed<int>(ProcessInformationClass.ProcessLUIDDeviceMapsEnabled) != 0;
-            }
-        }
+        public bool LUIDDeviceMapsEnabled => Query<int>(ProcessInformationClass.ProcessLUIDDeviceMapsEnabled) != 0;
 
         /// <summary>
         /// Return whether this process is sandboxed.
         /// </summary>
-        public bool IsSandboxToken
-        {
-            get
-            {
-                return NtToken.OpenProcessToken(this, 
-                    TokenAccessRights.Query, false).RunAndDispose(token => token.IsSandbox);
-            }
-        }
+        public bool IsSandboxToken => QueryToken(token => token.IsSandbox);
 
         /// <summary>
         /// Get or set the hard error mode.
@@ -2251,7 +2231,7 @@ namespace NtApiDotNet
         {
             get
             {
-                var result = QueryFixed<int>(ProcessInformationClass.ProcessDefaultHardErrorMode, false);
+                var result = Query(ProcessInformationClass.ProcessDefaultHardErrorMode, 0, false);
                 if (result.IsSuccess)
                 {
                     return result.Result;
@@ -2261,11 +2241,153 @@ namespace NtApiDotNet
 
             set
             {
-                using (var buffer = value.ToBuffer())
-                {
-                    NtSystemCalls.NtSetInformationProcess(Handle, ProcessInformationClass.ProcessDefaultHardErrorMode, buffer, buffer.Length).ToNtException();
-                }
+                Set(ProcessInformationClass.ProcessDefaultHardErrorMode, value);
             }
         }
+
+
+        /// <summary>
+        /// Get the process handle table and try and get them as objects.
+        /// </summary>
+        /// <returns>The list of handles as objects.</returns>
+        /// <remarks>This function will drop handles it can't duplicate.</remarks>
+        public bool IsChildProcessRestricted
+        {
+            get
+            {
+                int policy = GetRawMitigationPolicy(ProcessMitigationPolicy.ChildProcess);
+                if (policy != 0)
+                {
+                    return (policy & 1) == 1;
+                }
+
+                var result = Query(ProcessInformationClass.ProcessChildProcessInformation, new ProcessChildProcessRestricted(), false);
+                if (result.IsSuccess)
+                {
+                    return result.Result.ProhibitChildProcesses != 0;
+                }
+                var result_1709 = Query(ProcessInformationClass.ProcessChildProcessInformation, new ProcessChildProcessRestricted1709(), false);
+                if (result_1709.IsSuccess)
+                {
+                    return result_1709.Result.ProhibitChildProcesses != 0;
+                }
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// Gets whether the process is currently deleting.
+        /// </summary>
+        public bool IsDeleting => ExtendedFlags.HasFlag(ProcessExtendedBasicInformationFlags.IsProcessDeleting);
+
+        /// <summary>
+        /// Gets whether the process is secure.
+        /// </summary>
+        public bool Secure => ExtendedFlags.HasFlag(ProcessExtendedBasicInformationFlags.IsSecureProcess);
+
+        /// <summary>
+        /// Get process protection information.
+        /// </summary>
+        public PsProtection Protection => Query<PsProtection>(ProcessInformationClass.ProcessProtectionInformation);
+
+        /// <summary>
+        /// Query process section image information.
+        /// </summary>
+        public SectionImageInformation ImageInformation => Query<SectionImageInformation>(ProcessInformationClass.ProcessImageInformation);
+
+        /// <summary>
+        /// Get full image path name in native format
+        /// </summary>
+        public override string FullPath
+        {
+            get
+            {
+                var result = GetImageFilePath(true, false);
+                if (result.IsSuccess)
+                {
+                    return result.Result;
+                }
+                if (_pid.HasValue || IsAccessGranted(ProcessAccessRights.QueryLimitedInformation))
+                {
+                    switch (ProcessId)
+                    {
+                        case 0:
+                            return "Idle";
+                        case 4:
+                            return "System";
+                        default:
+                            return $"process:{ProcessId}";
+                    }
+                }
+
+                return string.Empty;
+            }
+        }
+
+        /// <summary>
+        /// Get the Win32 image path.
+        /// </summary>
+        public string Win32ImagePath => GetImageFilePath(false, false).GetResultOrDefault() ?? string.Empty;
+
+        /// <summary>
+        /// Get owner process ID
+        /// </summary>
+        public int OwnerProcessId => Query<IntPtr>(ProcessInformationClass.ProcessConsoleHostProcess).ToInt32();
+
+        /// <summary>
+        /// Query the process token's full package name.
+        /// </summary>
+        public string PackageFullName => QueryToken(t => t.PackageFullName, string.Empty);
+
+        /// <summary>
+        /// Get or set whether resource virtualization is enabled.
+        /// </summary>
+        public bool VirtualizationEnabled
+        {
+            get => QueryToken(t => t.VirtualizationEnabled, false);
+            set => Set(ProcessInformationClass.ProcessTokenVirtualizationEnabled, value ? 1 : 0);
+        }
+
+        /// <summary>
+        /// Get the security domain of the process.
+        /// </summary>
+        public long SecurityDomain => GetSecurityDomain();
+
+        /// <summary>
+        /// Get the creation time of the process.
+        /// </summary>
+        public DateTime CreateTime => DateTime.FromFileTime(Query<KernelUserTimes>(ProcessInformationClass.ProcessTimes).CreateTime.QuadPart);
+        /// <summary>
+        /// Get the exit time of the process.
+        /// </summary>
+        public DateTime ExitTime => DateTime.FromFileTime(Query<KernelUserTimes>(ProcessInformationClass.ProcessTimes).ExitTime.QuadPart);
+        /// <summary>
+        /// Get the time spent in the kernel.
+        /// </summary>
+        public long KernelTime => Query<KernelUserTimes>(ProcessInformationClass.ProcessTimes).KernelTime.QuadPart;
+        /// <summary>
+        /// Get the time spent in user mode.
+        /// </summary>
+        public long UserTime => Query<KernelUserTimes>(ProcessInformationClass.ProcessTimes).UserTime.QuadPart;
+        /// <summary>
+        /// Get the time spent in the kernel in seconds.
+        /// </summary>
+        public double KernelTimeSeconds => new TimeSpan(KernelTime).TotalSeconds;
+        /// <summary>
+        /// Get the time spent in user mode.
+        /// </summary>
+        public double UserTimeSeconds => new TimeSpan(UserTime).TotalSeconds;
+
+        #endregion
+
+        #region Static Properties
+
+        /// <summary>
+        /// Get the current process.
+        /// </summary>
+        /// <remarks>This only uses the pseudo handle, for the process. If you need a proper handle use OpenCurrent.</remarks>
+        public static NtProcess Current => new NtProcess(new SafeKernelObjectHandle(-1));
+
+        #endregion
     }
 }

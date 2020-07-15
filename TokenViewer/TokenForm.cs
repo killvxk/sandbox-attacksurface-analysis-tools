@@ -32,28 +32,30 @@ namespace TokenViewer
     {
         private NtToken _token;
 
-        private static void PopulateGroupList(ListView listView, IEnumerable<UserGroup> groups)
+        private static void PopulateGroupList(ListView listView, IEnumerable<UserGroup> groups, bool filter_il)
         {
             foreach (UserGroup group in groups)
             {
                 GroupAttributes flags = group.Attributes & ~(GroupAttributes.EnabledByDefault);
 
-                if ((flags & GroupAttributes.Integrity) == GroupAttributes.None)
+                if (filter_il && flags.HasFlag(GroupAttributes.Integrity))
                 {
-                    ListViewItem item = new ListViewItem(group.ToString());
-                    item.SubItems.Add(flags.ToString());
-
-                    if ((flags & GroupAttributes.Enabled) == GroupAttributes.Enabled)
-                    {
-                        item.BackColor = Color.LightGreen;
-                    }
-                    else if ((flags & GroupAttributes.UseForDenyOnly) == GroupAttributes.UseForDenyOnly)
-                    {
-                        item.BackColor = Color.LightSalmon;
-                    }
-                    item.Tag = group;
-                    listView.Items.Add(item);
+                    continue;
                 }
+
+                ListViewItem item = new ListViewItem(group.ToString());
+                item.SubItems.Add(flags.ToString());
+
+                if (flags.HasFlag(GroupAttributes.Enabled))
+                {
+                    item.BackColor = Color.LightGreen;
+                }
+                else if (flags.HasFlag(GroupAttributes.UseForDenyOnly))
+                {
+                    item.BackColor = Color.LightSalmon;
+                }
+                item.Tag = group;
+                listView.Items.Add(item);
             }
             listView.AutoResizeColumns(ColumnHeaderAutoResizeStyle.ColumnContent);
             listView.AutoResizeColumns(ColumnHeaderAutoResizeStyle.HeaderSize);
@@ -66,7 +68,7 @@ namespace TokenViewer
             groups.Add(_token.User);
             groups.AddRange(_token.Groups);
 
-            PopulateGroupList(listViewGroups, groups);
+            PopulateGroupList(listViewGroups, groups, true);
         }
 
         private void UpdatePrivileges()
@@ -78,13 +80,13 @@ namespace TokenViewer
                 bool enabled = false;
                 string flags = "Disabled";
 
-                if ((priv.Attributes & PrivilegeAttributes.Enabled) == PrivilegeAttributes.Enabled)
+                if (priv.Attributes.HasFlag(PrivilegeAttributes.Enabled))
                 {
                     enabled = true;
                     flags = "Enabled";
                 }
 
-                if ((priv.Attributes & PrivilegeAttributes.EnabledByDefault) == PrivilegeAttributes.EnabledByDefault)
+                if (priv.Attributes.HasFlag(PrivilegeAttributes.EnabledByDefault))
                 {
                     flags = "Default " + flags;
                 }
@@ -101,29 +103,62 @@ namespace TokenViewer
             listViewPrivs.AutoResizeColumns(ColumnHeaderAutoResizeStyle.HeaderSize);
         }
 
-        private void UpdateSecurityAttributes()
+        private static string FormatAttributeValue(object value)
         {
-            try
+            if (value is byte[] bytes)
             {
-                ClaimSecurityAttribute[] attrs = _token.SecurityAttributes;
-                foreach (ClaimSecurityAttribute attr in attrs)
+                StringBuilder builder = new StringBuilder();
+                builder.AppendFormat("Length {0} - {{", bytes.Length);
+                int count = bytes.Length;
+                builder.Append(string.Join(", ", bytes.Take(count > 16 ? 16 : count).Select(b => $"0x{b:X02}")));
+
+                if (count > 16)
                 {
-                    TreeNode node = new TreeNode(attr.Name);
-                    node.Nodes.Add($"Flags: {attr.Flags}");
-                    int value_index = 0;
-                    foreach (object value in attr.Values)
-                    {
-                        node.Nodes.Add($"Value {value_index++}: {value}");
-                    }
-                    treeViewSecurityAttributes.Nodes.Add(node);
+                    builder.Append(", ...");
                 }
+                builder.Append("}");
+                return builder.ToString();
             }
-            catch (NtException)
+            else if (value is ulong l)
             {
+                return $"{l:X016}";
+            }
+
+            return value.ToString();
+        }
+
+        private void UpdateSecurityAttributes(TabPage tab_page, TreeView treeView, SecurityAttributeType type)
+        {
+            var attrs = _token.GetSecurityAttributes(type, false);
+            if (!attrs.IsSuccess || attrs.Result.Length == 0)
+            {
+                tabControlSecurityAttributes.TabPages.Remove(tab_page);
+            }
+            treeView.Nodes.Clear();
+            foreach (ClaimSecurityAttribute attr in attrs.Result)
+            {
+                TreeNode node = new TreeNode(attr.Name);
+                node.Nodes.Add($"Flags: {attr.Flags}");
+                node.Nodes.Add($"Type: {attr.ValueType}");
+                int value_index = 0;
+                foreach (object value in attr.Values)
+                {
+                    node.Nodes.Add($"Value {value_index++}: {FormatAttributeValue(value)}");
+                }
+                treeView.Nodes.Add(node);
+            }
+            foreach (TreeNode node in treeView.Nodes)
+            {
+                node.Expand();
             }
         }
 
-        private void UpdateTokenData()
+        private void UpdateTokenFlags()
+        {
+            txtTokenFlags.Text = _token.Flags.ToString();
+        }
+
+        private void UpdateTokenData(ProcessTokenEntry process)
         {
             UserGroup user = _token.User;
 
@@ -132,12 +167,11 @@ namespace TokenViewer
 
             TokenType tokentype = _token.TokenType;
 
-            txtTokenType.Text = _token.TokenType.ToString();
+            txtTokenType.Text = tokentype.ToString();
 
-            if (_token.TokenType== TokenType.Impersonation)
+            if (tokentype == TokenType.Impersonation)
             {
-                SecurityImpersonationLevel implevel = _token.ImpersonationLevel;
-                txtImpLevel.Text = implevel.ToString();
+                txtImpLevel.Text = _token.ImpersonationLevel.ToString();
             }
             else
             {
@@ -175,6 +209,7 @@ namespace TokenViewer
             txtOriginLoginId.Text = _token.Origin.ToString();
 
             btnLinkedToken.Enabled = evtype != TokenElevationType.Default;
+            btnLinkedToken.Visible = btnLinkedToken.Enabled;
 
             UpdateGroupList();
 
@@ -190,7 +225,10 @@ namespace TokenViewer
 
                     ListViewItem item = new ListViewItem(group.ToString());
 
-                    AccessMask mask = GenericAccessRights.GenericAll | GenericAccessRights.GenericExecute | GenericAccessRights.GenericRead | GenericAccessRights.GenericWrite;
+                    AccessMask mask = GenericAccessRights.GenericAll | GenericAccessRights.GenericExecute 
+                        | GenericAccessRights.GenericRead | GenericAccessRights.GenericWrite 
+                        | GenericAccessRights.AccessSystemSecurity | GenericAccessRights.Delete | GenericAccessRights.ReadControl
+                        | GenericAccessRights.Synchronize | GenericAccessRights.WriteDac | GenericAccessRights.WriteOwner;
                     string maskstr;
 
                     if ((ace.Mask & ~mask).HasAccess)
@@ -218,7 +256,11 @@ namespace TokenViewer
 
             if (_token.Restricted)
             {
-                PopulateGroupList(listViewRestrictedSids, _token.RestrictedSids);
+                PopulateGroupList(listViewRestrictedSids, _token.RestrictedSids, false);
+                if (_token.WriteRestricted)
+                {
+                    tabPageRestricted.Text = "Write Restricted SIDs";
+                }
             }
             else
             {
@@ -227,7 +269,7 @@ namespace TokenViewer
 
             if (_token.AppContainer)
             {
-                PopulateGroupList(listViewCapabilities, _token.Capabilities);
+                PopulateGroupList(listViewCapabilities, _token.Capabilities, false);
                 txtACNumber.Text = _token.AppContainerNumber.ToString();
                 txtPackageName.Text = _token.AppContainerSid.Name;
                 txtPackageSid.Text = _token.AppContainerSid.ToString();
@@ -237,11 +279,32 @@ namespace TokenViewer
                 tabControlMain.TabPages.Remove(tabPageAppContainer);
             }
 
+            if (process == null)
+            {
+                tabControlMain.TabPages.Remove(tabPageTokenSource);
+            }
+            else
+            {
+                txtProcessId.Text = process.ProcessId.ToString();
+                txtProcessImagePath.Text = process.ImagePath;
+                txtProcessCommandLine.Text = process.CommandLine;
+                if (process is ThreadTokenEntry thread)
+                {
+                    txtThreadId.Text = thread.ThreadId.ToString();
+                    txtThreadName.Text = thread.ThreadName;
+                }
+                else
+                {
+                    groupThread.Visible = false;
+                }
+            }
+
             txtUIAccess.Text = _token.UIAccess.ToString();
             txtSandboxInert.Text = _token.SandboxInert.ToString();
             bool virtAllowed = _token.VirtualizationAllowed;
             txtVirtualizationAllowed.Text = virtAllowed.ToString();
             btnToggleVirtualizationEnabled.Enabled = virtAllowed;
+            btnToggleVirtualizationEnabled.Visible = virtAllowed;
             if (virtAllowed)
             {
                 txtVirtualizationEnabled.Text = _token.VirtualizationEnabled.ToString();
@@ -255,8 +318,23 @@ namespace TokenViewer
             txtHandleAccess.Text = _token.GrantedAccess.ToString();
             Sid trust_level = _token.TrustLevel;
             txtTrustLevel.Text = trust_level != null ? trust_level.Name : "N/A";
+            UpdateTokenFlags();
             UpdatePrivileges();
-            UpdateSecurityAttributes();
+            UpdateSecurityAttributes(tabPageLocalSecurityAttributes, treeViewLocalSecurityAttributes, SecurityAttributeType.Local);
+            UpdateSecurityAttributes(tabPageUserClaimSecurityAttributes, treeViewUserClaimSecurityAttributes, SecurityAttributeType.User);
+            UpdateSecurityAttributes(tabPageDeviceClaimSecurityAttributes, treeViewDeviceClaimSecurityAttributes, SecurityAttributeType.Device);
+            if (_token.DeviceGroups.Length > 0)
+            {
+                PopulateGroupList(listViewDeviceGroup, _token.DeviceGroups, false);
+            }
+            else
+            {
+                tabControlSecurityAttributes.TabPages.Remove(tabPageDeviceGroup);
+            }
+            if (tabControlSecurityAttributes.TabCount == 0)
+            {
+                lblSecurityAttributes.Visible = false;
+            }
 
             if (_token.IsAccessGranted(TokenAccessRights.ReadControl))
             {
@@ -280,11 +358,17 @@ namespace TokenViewer
             return builder.ToString();
         }
 
-        public TokenForm(NtToken token) : this(token, null)
+        public TokenForm(NtToken token) 
+            : this(token, null)
         {
         }
 
-        public TokenForm(NtToken token, string text)
+        public TokenForm(NtToken token, string text) 
+            : this(null, token, text)
+        {
+        }
+
+        private TokenForm(ProcessTokenEntry process, NtToken token, string text)
         {
             InitializeComponent();
             this.Disposed += TokenForm_Disposed;
@@ -297,7 +381,7 @@ namespace TokenViewer
                 comboBoxILForDup.Items.Add(v);
             }
 
-            UpdateTokenData();
+            UpdateTokenData(process);
             listViewGroups.ListViewItemSorter = new ListItemComparer(0);
             listViewPrivs.ListViewItemSorter = new ListItemComparer(0);
             listViewRestrictedSids.ListViewItemSorter = new ListItemComparer(0);
@@ -319,6 +403,11 @@ namespace TokenViewer
             }
 
             comboBoxSaferLevel.SelectedItem = SaferLevel.NormalUser;
+        }
+
+        internal TokenForm(ProcessTokenEntry process, string text, bool thread)
+            : this(process, thread ? ((ThreadTokenEntry)process).ThreadToken : process.ProcessToken, text)
+        {
         }
 
         void TokenForm_Disposed(object sender, EventArgs e)
@@ -364,16 +453,26 @@ namespace TokenViewer
             _main_form = window;
         }
 
+        private static void OpenForm(TokenForm form)
+        {
+            _forms.Add(form);
+            form.FormClosed += form_FormClosed;
+            form.Show(_main_form);
+        }
+
         public static void OpenForm(NtToken token, string text, bool copy)
         {
             if (token != null)
             {
-                TokenForm form = new TokenForm(copy ? token.Duplicate() : token, text);
+                OpenForm(new TokenForm(copy ? token.Duplicate() : token, text));
+            }
+        }
 
-                _forms.Add(form);
-                form.FormClosed += form_FormClosed;
-
-                form.Show(_main_form);
+        internal static void OpenForm(ProcessTokenEntry process, string text, bool copy, bool thread)
+        {
+            if (process != null)
+            {
+                OpenForm(new TokenForm(copy ? process.Clone() : process, text, thread));
             }
         }
 
@@ -515,7 +614,7 @@ namespace TokenViewer
         private static bool ParseNum(string str, out uint num)
         {
             num = 0;
-            if (String.IsNullOrWhiteSpace(str))
+            if (string.IsNullOrWhiteSpace(str))
             {
                 return false;
             }
@@ -842,6 +941,7 @@ namespace TokenViewer
             {
                 _token.SetUIAccess(!_token.UIAccess);
                 txtUIAccess.Text = _token.UIAccess.ToString();
+                UpdateTokenFlags();
             }
             catch (NtException ex)
             {
@@ -856,6 +956,7 @@ namespace TokenViewer
             {
                 _token.SetVirtualizationEnabled(!_token.VirtualizationEnabled);
                 txtVirtualizationEnabled.Text = _token.VirtualizationEnabled.ToString();
+                UpdateTokenFlags();
             }
             catch (NtException ex)
             {

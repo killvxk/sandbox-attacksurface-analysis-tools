@@ -11,20 +11,94 @@
   </SelectionSets>
   <ViewDefinitions>
     <View>
-      <Name>NtDirectoryEntryTable</Name>
+      <Name>NtKeyEntryTable</Name>
       <ViewSelectedBy>
-        <TypeName>NtObjectManager.NtDirectoryEntry</TypeName>
+        <TypeName>NtObjectManager.Provider.NtKeyEntry</TypeName>
       </ViewSelectedBy>
       <TableControl>
         <TableHeaders>
           <TableColumnHeader>
             <Label>Name</Label>
-            <Width>40</Width>
             <Alignment>left</Alignment>
           </TableColumnHeader>
           <TableColumnHeader>
             <Label>TypeName</Label>
-            <Width>30</Width>
+            <Alignment>left</Alignment>
+          </TableColumnHeader>
+        </TableHeaders>
+        <TableRowEntries>
+          <TableRowEntry>
+            <TableColumnItems>
+              <TableColumnItem>
+                <PropertyName>Name</PropertyName>
+              </TableColumnItem>
+              <TableColumnItem>
+                <PropertyName>TypeName</PropertyName>
+              </TableColumnItem>
+            </TableColumnItems>
+          </TableRowEntry>
+        </TableRowEntries>
+      </TableControl>
+    </View>
+    <View>
+      <Name>NtKeyEntryList</Name>
+      <ViewSelectedBy>
+        <TypeName>NtObjectManager.Provider.NtKeyEntry</TypeName>
+      </ViewSelectedBy>
+      <ListControl>
+        <ListEntries>
+          <ListEntry>
+            <ListItems>
+              <ListItem>
+                <PropertyName>Name</PropertyName>
+              </ListItem>
+              <ListItem>
+                <PropertyName>TypeName</PropertyName>
+              </ListItem>
+              <ListItem>
+                <PropertyName>IsDirectory</PropertyName>
+              </ListItem>
+              <ListItem>
+                <PropertyName>IsSymbolicLink</PropertyName>
+              </ListItem>
+              <ListItem>
+                <PropertyName>RelativePath</PropertyName>
+              </ListItem>
+              <ListItem>
+                <PropertyName>SymbolicLinkTarget</PropertyName>
+              </ListItem>
+              <ListItem>
+                <PropertyName>MaximumGrantedAccess</PropertyName>
+              </ListItem>
+              <ListItem>
+                <ScriptBlock>$_.SecurityDescriptor.ToSddl()</ScriptBlock>
+                <Label>SecurityDescriptor</Label>
+              </ListItem>
+              <ListItem>
+                <PropertyName>ValueCount</PropertyName>
+              </ListItem>
+              <ListItem>
+                <ScriptBlock>$_.Values.Name</ScriptBlock>
+                <Label>Values</Label>
+              </ListItem>
+            </ListItems>
+          </ListEntry>
+        </ListEntries>
+      </ListControl>
+    </View>
+    <View>
+      <Name>NtDirectoryEntryTable</Name>
+      <ViewSelectedBy>
+        <TypeName>NtObjectManager.Provider.NtDirectoryEntry</TypeName>
+      </ViewSelectedBy>
+      <TableControl>
+        <TableHeaders>
+          <TableColumnHeader>
+            <Label>Name</Label>
+            <Alignment>left</Alignment>
+          </TableColumnHeader>
+          <TableColumnHeader>
+            <Label>TypeName</Label>
             <Alignment>left</Alignment>
           </TableColumnHeader>
         </TableHeaders>
@@ -45,7 +119,7 @@
     <View>
       <Name>NtDirectoryEntryList</Name>
       <ViewSelectedBy>
-        <TypeName>NtObjectManager.NtDirectoryEntry</TypeName>
+        <TypeName>NtObjectManager.Provider.NtDirectoryEntry</TypeName>
       </ViewSelectedBy>
       <ListControl>
         <ListEntries>
@@ -90,7 +164,6 @@
         <TableHeaders>
           <TableColumnHeader>
             <Label>Name</Label>
-            <Width>40</Width>
             <Alignment>left</Alignment>
           </TableColumnHeader>
         </TableHeaders>
@@ -114,12 +187,10 @@
         <TableHeaders>
           <TableColumnHeader>
             <Label>Name</Label>
-            <Width>40</Width>
             <Alignment>left</Alignment>
           </TableColumnHeader>
           <TableColumnHeader>
             <Label>Sid</Label>
-            <Width>30</Width>
             <Alignment>left</Alignment>
           </TableColumnHeader>
         </TableHeaders>
@@ -146,22 +217,18 @@
         <TableHeaders>
           <TableColumnHeader>
             <Label>Type</Label>
-            <Width>10</Width>
             <Alignment>left</Alignment>
           </TableColumnHeader>
           <TableColumnHeader>
             <Label>User</Label>
-            <Width>30</Width>
             <Alignment>left</Alignment>
           </TableColumnHeader>
           <TableColumnHeader>
             <Label>Flags</Label>
-            <Width>20</Width>
             <Alignment>left</Alignment>
           </TableColumnHeader>
           <TableColumnHeader>
             <Label>Mask</Label>
-            <Width>10</Width>
             <Alignment>left</Alignment>
           </TableColumnHeader>
         </TableHeaders>
@@ -256,17 +323,14 @@
         <TableHeaders>
           <TableColumnHeader>
             <Label>Name</Label>
-            <Width>30</Width>
             <Alignment>left</Alignment>
           </TableColumnHeader>
           <TableColumnHeader>
             <Label>Luid</Label>
-            <Width>20</Width>
             <Alignment>left</Alignment>
           </TableColumnHeader>
           <TableColumnHeader>
             <Label>Enabled</Label>
-            <Width>10</Width>
             <Alignment>left</Alignment>
           </TableColumnHeader>
         </TableHeaders>
@@ -297,7 +361,7 @@
           <ListEntry>
             <ListItems>
               <ListItem>
-                <PropertyName>Name</PropertyName>                
+                <PropertyName>Name</PropertyName>
               </ListItem>
               <ListItem>
                 <PropertyName>Luid</PropertyName>
@@ -348,12 +412,10 @@
         <TableHeaders>
           <TableColumnHeader>
             <Label>Name</Label>
-            <Width>30</Width>
             <Alignment>left</Alignment>
           </TableColumnHeader>
           <TableColumnHeader>
             <Label>Attributes</Label>
-            <Width>30</Width>
             <Alignment>left</Alignment>
           </TableColumnHeader>
         </TableHeaders>
@@ -403,13 +465,11 @@
       <TableControl>
         <TableHeaders>
           <TableColumnHeader>
-            <Label>Name</Label>
-            <Width>30</Width>
+            <Label>Atom</Label>
             <Alignment>left</Alignment>
           </TableColumnHeader>
           <TableColumnHeader>
-            <Label>Atom</Label>
-            <Width>10</Width>
+            <Label>Name</Label>
             <Alignment>left</Alignment>
           </TableColumnHeader>
         </TableHeaders>
@@ -417,11 +477,11 @@
           <TableRowEntry>
             <TableColumnItems>
               <TableColumnItem>
-                <PropertyName>Name</PropertyName>
-              </TableColumnItem>
-              <TableColumnItem>
                 <PropertyName>Atom</PropertyName>
                 <FormatString>X04</FormatString>
+              </TableColumnItem>
+              <TableColumnItem>
+                <PropertyName>Name</PropertyName>
               </TableColumnItem>
             </TableColumnItems>
           </TableRowEntry>
@@ -506,27 +566,22 @@
         <TableHeaders>
           <TableColumnHeader>
             <Label>User</Label>
-            <Width>30</Width>
             <Alignment>left</Alignment>
           </TableColumnHeader>
           <TableColumnHeader>
             <Label>GroupCount</Label>
-            <Width>10</Width>
             <Alignment>left</Alignment>
           </TableColumnHeader>
           <TableColumnHeader>
             <Label>PrivilegeCount</Label>
-            <Width>10</Width>
             <Alignment>left</Alignment>
           </TableColumnHeader>
           <TableColumnHeader>
             <Label>AppContainer</Label>
-            <Width>10</Width>
             <Alignment>left</Alignment>
           </TableColumnHeader>
           <TableColumnHeader>
             <Label>Restricted</Label>
-            <Width>10</Width>
             <Alignment>left</Alignment>
           </TableColumnHeader>
         </TableHeaders>
@@ -562,12 +617,10 @@
         <TableHeaders>
           <TableColumnHeader>
             <Label>Name</Label>
-            <Width>30</Width>
             <Alignment>left</Alignment>
           </TableColumnHeader>
           <TableColumnHeader>
             <Label>Target</Label>
-            <Width>40</Width>
             <Alignment>left</Alignment>
           </TableColumnHeader>
         </TableHeaders>
@@ -593,13 +646,23 @@
       <TableControl>
         <TableHeaders>
           <TableColumnHeader>
+            <Label>Handle</Label>
+            <Alignment>left</Alignment>
+          </TableColumnHeader>
+          <TableColumnHeader>
             <Label>Name</Label>
-            <Width>30</Width>
             <Alignment>left</Alignment>
           </TableColumnHeader>
           <TableColumnHeader>
             <Label>NtTypeName</Label>
-            <Width>30</Width>
+            <Alignment>left</Alignment>
+          </TableColumnHeader>
+          <TableColumnHeader>
+            <Label>Inherit</Label>
+            <Alignment>left</Alignment>
+          </TableColumnHeader>
+          <TableColumnHeader>
+            <Label>ProtectFromClose</Label>
             <Alignment>left</Alignment>
           </TableColumnHeader>
         </TableHeaders>
@@ -607,10 +670,19 @@
           <TableRowEntry>
             <TableColumnItems>
               <TableColumnItem>
+                <ScriptBlock>$_.Handle.DangerousGetHandle()</ScriptBlock>
+              </TableColumnItem>
+              <TableColumnItem>
                 <PropertyName>Name</PropertyName>
               </TableColumnItem>
               <TableColumnItem>
                 <PropertyName>NtTypeName</PropertyName>
+              </TableColumnItem>
+              <TableColumnItem>
+                <PropertyName>Inherit</PropertyName>
+              </TableColumnItem>
+              <TableColumnItem>
+                <PropertyName>ProtectFromClose</PropertyName>
               </TableColumnItem>
             </TableColumnItems>
           </TableRowEntry>
@@ -641,27 +713,22 @@
         <TableHeaders>
           <TableColumnHeader>
             <Label>ProcessId</Label>
-            <Width>10</Width>
             <Alignment>left</Alignment>
           </TableColumnHeader>
           <TableColumnHeader>
             <Label>Handle</Label>
-            <Width>10</Width>
             <Alignment>left</Alignment>
           </TableColumnHeader>
           <TableColumnHeader>
             <Label>ObjectType</Label>
-            <Width>30</Width>
             <Alignment>left</Alignment>
           </TableColumnHeader>
           <TableColumnHeader>
             <Label>Object</Label>
-            <Width>30</Width>
             <Alignment>left</Alignment>
           </TableColumnHeader>
           <TableColumnHeader>
             <Label>GrantedAccess</Label>
-            <Width>30</Width>
             <Alignment>left</Alignment>
           </TableColumnHeader>
         </TableHeaders>
@@ -721,6 +788,12 @@
                 <FormatString>X08</FormatString>
               </ListItem>
               <ListItem>
+                <PropertyName>GrantedAccessString</PropertyName>
+              </ListItem>
+              <ListItem>
+                <PropertyName>GrantedGenericAccessString</PropertyName>
+              </ListItem>
+              <ListItem>
                 <PropertyName>Name</PropertyName>
               </ListItem>
               <ListItem>
@@ -735,7 +808,7 @@
     <View>
       <Name>AccessCheckResult</Name>
       <ViewSelectedBy>
-        <TypeName>NtObjectManager.AccessCheckResult</TypeName>
+        <TypeName>NtObjectManager.Cmdlets.Accessible.CommonAccessCheckResult</TypeName>
       </ViewSelectedBy>
       <TableControl>
         <TableHeaders>
@@ -779,22 +852,18 @@
         <TableHeaders>
           <TableColumnHeader>
             <Label>Name</Label>
-            <Width>40</Width>
             <Alignment>left</Alignment>
           </TableColumnHeader>
           <TableColumnHeader>
             <Label>UiAccess</Label>
-            <Width>10</Width>
             <Alignment>left</Alignment>
           </TableColumnHeader>
           <TableColumnHeader>
             <Label>AutoElevate</Label>
-            <Width>15</Width>
             <Alignment>left</Alignment>
           </TableColumnHeader>
           <TableColumnHeader>
             <Label>ExecutionLevel</Label>
-            <Width>30</Width>
             <Alignment>left</Alignment>
           </TableColumnHeader>
         </TableHeaders>
@@ -826,23 +895,19 @@
         <TableControl>
             <TableHeaders>
                 <TableColumnHeader>
-                    <Label>ProcessId</Label>
-                    <Width>10</Width>
+                    <Label>PID</Label>
                     <Alignment>left</Alignment>
                 </TableColumnHeader>
                 <TableColumnHeader>
-                    <Label>ParentProcessId</Label>
-                    <Width>10</Width>
+                    <Label>PPID</Label>
                     <Alignment>left</Alignment>
                 </TableColumnHeader>
                 <TableColumnHeader>
-                    <Label>ImageName</Label>
-                    <Width>40</Width>
+                    <Label>Name</Label>
                     <Alignment>left</Alignment>
                 </TableColumnHeader>
                 <TableColumnHeader>
                     <Label>SessionId</Label>
-                    <Width>10</Width>
                     <Alignment>left</Alignment>
                 </TableColumnHeader>
             </TableHeaders>
@@ -874,23 +939,19 @@
         <TableControl>
             <TableHeaders>
                 <TableColumnHeader>
-                    <Label>ThreadId</Label>
-                    <Width>10</Width>
+                    <Label>TID</Label>
                     <Alignment>left</Alignment>
                 </TableColumnHeader>
                 <TableColumnHeader>
-                    <Label>ProcessId</Label>
-                    <Width>10</Width>
+                    <Label>PID</Label>
                     <Alignment>left</Alignment>
                 </TableColumnHeader>
                 <TableColumnHeader>
                     <Label>ProcessName</Label>
-                    <Width>40</Width>
                     <Alignment>left</Alignment>
                 </TableColumnHeader>
                 <TableColumnHeader>
                     <Label>StartAddress</Label>
-                    <Width>40</Width>
                     <Alignment>left</Alignment>
                 </TableColumnHeader>
             </TableHeaders>
@@ -924,27 +985,22 @@
             <TableHeaders>
                 <TableColumnHeader>
                     <Label>UUID</Label>
-                    <Width>36</Width>
                     <Alignment>left</Alignment>
                 </TableColumnHeader>
                 <TableColumnHeader>
                     <Label>Version</Label>
-                    <Width>8</Width>
                     <Alignment>left</Alignment>
                 </TableColumnHeader>
                 <TableColumnHeader>
                     <Label>Protocol</Label>
-                    <Width>8</Width>
                     <Alignment>left</Alignment>
                 </TableColumnHeader>
                 <TableColumnHeader>
                     <Label>Endpoint</Label>
-                    <Width>30</Width>
                     <Alignment>left</Alignment>
                 </TableColumnHeader>
                 <TableColumnHeader>
                     <Label>Annotation</Label>
-                    <Width>30</Width>
                     <Alignment>left</Alignment>
                 </TableColumnHeader>
             </TableHeaders>
@@ -980,37 +1036,30 @@
             <TableHeaders>
                 <TableColumnHeader>
                     <Label>Name</Label>
-                    <Width>10</Width>
                     <Alignment>left</Alignment>
                 </TableColumnHeader>
                 <TableColumnHeader>
                     <Label>UUID</Label>
-                    <Width>36</Width>
                     <Alignment>left</Alignment>
                 </TableColumnHeader>
                 <TableColumnHeader>
-                    <Label>Version</Label>
-                    <Width>8</Width>
+                    <Label>Ver</Label>
                     <Alignment>left</Alignment>
                 </TableColumnHeader>
                 <TableColumnHeader>
-                    <Label>Procedures</Label>
-                    <Width>10</Width>
+                    <Label>Procs</Label>
                     <Alignment>left</Alignment>
                 </TableColumnHeader>
                 <TableColumnHeader>
-                    <Label>Endpoints</Label>
-                    <Width>9</Width>
+                    <Label>EPs</Label>
                     <Alignment>left</Alignment>
                 </TableColumnHeader>
                 <TableColumnHeader>
                     <Label>Service</Label>
-                    <Width>16</Width>
                     <Alignment>left</Alignment>
                 </TableColumnHeader>
                 <TableColumnHeader>
                     <Label>Running</Label>
-                    <Width>8</Width>
                     <Alignment>left</Alignment>
                 </TableColumnHeader>
             </TableHeaders>
@@ -1042,6 +1091,1870 @@
                 </TableRowEntry>
             </TableRowEntries>
         </TableControl>
+    </View>
+    <View>
+        <Name>NtKeyValue</Name>
+        <ViewSelectedBy>
+            <TypeName>NtApiDotNet.NtKeyValue</TypeName>
+        </ViewSelectedBy>
+        <TableControl>
+            <TableHeaders>
+                <TableColumnHeader>
+                    <Label>Name</Label>
+                    <Alignment>left</Alignment>
+                </TableColumnHeader>
+                <TableColumnHeader>
+                    <Label>Type</Label>
+                    <Alignment>left</Alignment>
+                </TableColumnHeader>
+                <TableColumnHeader>
+                    <Label>DataObject</Label>
+                    <Alignment>left</Alignment>
+                </TableColumnHeader>
+            </TableHeaders>
+            <TableRowEntries>
+                <TableRowEntry>
+                    <TableColumnItems>
+                        <TableColumnItem>
+                            <PropertyName>Name</PropertyName>
+                        </TableColumnItem>
+                        <TableColumnItem>
+                            <PropertyName>Type</PropertyName>
+                        </TableColumnItem>
+                        <TableColumnItem>
+                            <PropertyName>DataObject</PropertyName>
+                        </TableColumnItem>
+                    </TableColumnItems>
+                </TableRowEntry>
+            </TableRowEntries>
+        </TableControl>
+    </View>
+    <View>
+        <Name>NtStatusResultTable</Name>
+        <ViewSelectedBy>
+            <TypeName>NtObjectManager.Cmdlets.Object.NtStatusResult</TypeName>
+        </ViewSelectedBy>
+        <TableControl>
+            <TableHeaders>
+                <TableColumnHeader>
+                    <Label>Status</Label>
+                    <Alignment>left</Alignment>
+                </TableColumnHeader>
+                <TableColumnHeader>
+                    <Label>StatusName</Label>
+                    <Alignment>left</Alignment>
+                </TableColumnHeader>
+                <TableColumnHeader>
+                    <Label>Message</Label>
+                    <Alignment>left</Alignment>
+                </TableColumnHeader>
+            </TableHeaders>
+            <TableRowEntries>
+                <TableRowEntry>
+                    <TableColumnItems>
+                        <TableColumnItem>
+                            <PropertyName>Status</PropertyName>
+                            <FormatString>X08</FormatString>
+                        </TableColumnItem>
+                        <TableColumnItem>
+                            <PropertyName>StatusName</PropertyName>
+                        </TableColumnItem>
+                        <TableColumnItem>
+                            <PropertyName>Message</PropertyName>
+                        </TableColumnItem>
+                    </TableColumnItems>
+                </TableRowEntry>
+            </TableRowEntries>
+        </TableControl>
+    </View>
+    <View>
+        <Name>NtIoControlCode</Name>
+        <ViewSelectedBy>
+            <TypeName>NtApiDotNet.NtIoControlCode</TypeName>
+        </ViewSelectedBy>
+        <TableControl>
+            <TableHeaders>
+                <TableColumnHeader>
+                    <Label>DeviceType</Label>
+                    <Alignment>left</Alignment>
+                </TableColumnHeader>
+                <TableColumnHeader>
+                    <Label>Function</Label>
+                    <Alignment>Right</Alignment>
+                </TableColumnHeader>
+                <TableColumnHeader>
+                    <Label>Method</Label>
+                    <Alignment>left</Alignment>
+                </TableColumnHeader>
+                <TableColumnHeader>
+                    <Label>Access</Label>
+                    <Alignment>left</Alignment>
+                </TableColumnHeader>
+                <TableColumnHeader>
+                    <Label>Name</Label>
+                    <Alignment>left</Alignment>
+                </TableColumnHeader>
+            </TableHeaders>
+            <TableRowEntries>
+                <TableRowEntry>
+                    <TableColumnItems>
+                        <TableColumnItem>
+                            <PropertyName>DeviceType</PropertyName>
+                        </TableColumnItem>
+                        <TableColumnItem>
+                            <PropertyName>Function</PropertyName>
+                        </TableColumnItem>
+                        <TableColumnItem>
+                            <PropertyName>Method</PropertyName>
+                        </TableColumnItem>
+                        <TableColumnItem>
+                            <PropertyName>Access</PropertyName>
+                        </TableColumnItem>
+                        <TableColumnItem>
+                            <PropertyName>Name</PropertyName>
+                        </TableColumnItem>
+                    </TableColumnItems>
+                </TableRowEntry>
+            </TableRowEntries>
+        </TableControl>
+    </View>
+    <View>
+        <Name>AccessMask</Name>
+        <ViewSelectedBy>
+            <TypeName>NtApiDotNet.AccessMask</TypeName>
+        </ViewSelectedBy>
+        <TableControl>
+            <TableHeaders>
+                <TableColumnHeader>
+                    <Label>Access</Label>
+                    <Width>10</Width>
+                    <Alignment>left</Alignment>
+                </TableColumnHeader>
+            </TableHeaders>
+            <TableRowEntries>
+                <TableRowEntry>
+                    <TableColumnItems>
+                        <TableColumnItem>
+                            <PropertyName>Access</PropertyName>
+                            <FormatString>X08</FormatString>
+                        </TableColumnItem>
+                    </TableColumnItems>
+                </TableRowEntry>
+            </TableRowEntries>
+        </TableControl>
+    </View>
+    <View>
+      <Name>NtMappedSection</Name>
+      <ViewSelectedBy>
+        <TypeName>NtApiDotNet.NtMappedSection</TypeName>
+      </ViewSelectedBy>
+      <TableControl>
+        <TableHeaders>
+          <TableColumnHeader>
+            <Label>BaseAddress</Label>
+            <Alignment>left</Alignment>
+          </TableColumnHeader>
+          <TableColumnHeader>
+            <Label>Protection</Label>
+              <Alignment>left</Alignment>
+          </TableColumnHeader>
+          <TableColumnHeader>
+            <Label>Length</Label>
+            <Alignment>left</Alignment>
+          </TableColumnHeader>
+          <TableColumnHeader>
+            <Label>Path</Label>
+            <Alignment>left</Alignment>
+          </TableColumnHeader>
+        </TableHeaders>
+        <TableRowEntries>
+          <TableRowEntry>
+            <TableColumnItems>
+              <TableColumnItem>
+                <PropertyName>BaseAddress</PropertyName>
+                <FormatString>X016</FormatString>
+              </TableColumnItem>
+              <TableColumnItem>
+                <PropertyName>Protection</PropertyName>
+              </TableColumnItem>
+              <TableColumnItem>
+                <PropertyName>LongLength</PropertyName>
+              </TableColumnItem>
+              <TableColumnItem>
+                <PropertyName>FullPath</PropertyName>
+              </TableColumnItem>
+            </TableColumnItems>
+          </TableRowEntry>
+        </TableRowEntries>
+      </TableControl>
+    </View>
+    <View>
+      <Name>RunningService</Name>
+      <ViewSelectedBy>
+        <TypeName>NtApiDotNet.Win32.RunningService</TypeName>
+      </ViewSelectedBy>
+      <TableControl>
+        <TableHeaders>
+          <TableColumnHeader>
+            <Label>Name</Label>
+            <Alignment>left</Alignment>
+          </TableColumnHeader>
+          <TableColumnHeader>
+            <Label>Status</Label>
+              <Alignment>left</Alignment>
+          </TableColumnHeader>
+          <TableColumnHeader>
+            <Label>ProcessId</Label>
+            <Alignment>left</Alignment>
+          </TableColumnHeader>
+        </TableHeaders>
+        <TableRowEntries>
+          <TableRowEntry>
+            <TableColumnItems>
+              <TableColumnItem>
+                <PropertyName>Name</PropertyName>
+              </TableColumnItem>
+              <TableColumnItem>
+                <PropertyName>Status</PropertyName>
+              </TableColumnItem>
+              <TableColumnItem>
+                <PropertyName>ProcessId</PropertyName>
+              </TableColumnItem>
+            </TableColumnItems>
+          </TableRowEntry>
+        </TableRowEntries>
+      </TableControl>
+    </View>
+    <View>
+      <Name>AccessMaskEntry</Name>
+      <ViewSelectedBy>
+        <TypeName>NtApiDotNet.AccessMaskEntry</TypeName>
+      </ViewSelectedBy>
+      <TableControl>
+        <TableHeaders>
+          <TableColumnHeader>
+            <Label>Mask</Label>
+            <Alignment>left</Alignment>
+          </TableColumnHeader>
+          <TableColumnHeader>
+            <Label>Value</Label>
+            <Alignment>left</Alignment>
+          </TableColumnHeader>
+          <TableColumnHeader>
+            <Label>GenericAccess</Label>
+            <Alignment>left</Alignment>
+          </TableColumnHeader>
+        </TableHeaders>
+        <TableRowEntries>
+          <TableRowEntry>
+            <TableColumnItems>
+              <TableColumnItem>
+                <PropertyName>Mask</PropertyName>
+                <FormatString>X08</FormatString>
+              </TableColumnItem>
+              <TableColumnItem>
+                <PropertyName>Value</PropertyName>
+              </TableColumnItem>
+              <TableColumnItem>
+                <PropertyName>GenericAccess</PropertyName>
+              </TableColumnItem>
+            </TableColumnItems>
+          </TableRowEntry>
+        </TableRowEntries>
+      </TableControl>
+    </View>
+    <View>
+      <Name>SecurityDescriptorTable</Name>
+      <ViewSelectedBy>
+        <TypeName>NtApiDotNet.SecurityDescriptor</TypeName>
+      </ViewSelectedBy>
+      <TableControl>
+        <TableHeaders>
+          <TableColumnHeader>
+            <Label>Owner</Label>
+            <Alignment>left</Alignment>
+          </TableColumnHeader>
+          <TableColumnHeader>
+            <Label>DACL ACE Count</Label>
+            <Alignment>left</Alignment>
+          </TableColumnHeader>
+          <TableColumnHeader>
+            <Label>SACL ACE Count</Label>
+            <Alignment>left</Alignment>
+          </TableColumnHeader>
+          <TableColumnHeader>
+            <Label>Integrity Level</Label>
+            <Alignment>left</Alignment>
+          </TableColumnHeader>
+        </TableHeaders>
+        <TableRowEntries>
+          <TableRowEntry>
+            <TableColumnItems>
+              <TableColumnItem>
+                <ScriptBlock>if ($_.Owner -ne $null) { $_.Owner.Sid.Name } else { "NONE" }</ScriptBlock>
+              </TableColumnItem>
+              <TableColumnItem>
+                <ScriptBlock>if (-not $_.DaclPresent) { "NONE" } elseif ($_.Dacl.NullAcl) { "NULL DACL" } else { $_.DaclAceCount }</ScriptBlock>
+              </TableColumnItem>
+              <TableColumnItem>
+                <ScriptBlock>if (-not $_.SaclPresent) { "NONE" } elseif ($_.Sacl.NullAcl) { "NULL SACL" } else { $_.SaclAceCount }</ScriptBlock>
+              </TableColumnItem>
+              <TableColumnItem>
+                <ScriptBlock>if (-not $_.HasMandatoryLabelAce) { "NONE" } else { $_.IntegrityLevel }</ScriptBlock>
+              </TableColumnItem>
+            </TableColumnItems>
+          </TableRowEntry>
+        </TableRowEntries>
+      </TableControl>
+    </View>
+    <View>
+      <Name>NtWnf</Name>
+      <ViewSelectedBy>
+        <TypeName>NtApiDotNet.NtWnf</TypeName>
+      </ViewSelectedBy>
+      <TableControl>
+        <TableHeaders>
+          <TableColumnHeader>
+            <Label>Name</Label>
+            <Width>50</Width>
+            <Alignment>left</Alignment>
+          </TableColumnHeader>
+          <TableColumnHeader>
+            <Label>Lifetime</Label>
+            <Width>9</Width>
+            <Alignment>left</Alignment>
+          </TableColumnHeader>
+          <TableColumnHeader>
+            <Label>Subscribers</Label>
+            <Width>11</Width>
+            <Alignment>left</Alignment>
+          </TableColumnHeader>
+        </TableHeaders>
+        <TableRowEntries>
+          <TableRowEntry>
+            <TableColumnItems>
+              <TableColumnItem>
+                <PropertyName>Name</PropertyName>
+              </TableColumnItem>
+              <TableColumnItem>
+                <PropertyName>Lifetime</PropertyName>
+              </TableColumnItem>
+              <TableColumnItem>
+                <PropertyName>SubscribersPresent</PropertyName>
+              </TableColumnItem>
+            </TableColumnItems>
+          </TableRowEntry>
+        </TableRowEntries>
+      </TableControl>
+    </View>
+    <View>
+      <Name>NtWindow</Name>
+      <ViewSelectedBy>
+        <TypeName>NtApiDotNet.NtWindow</TypeName>
+      </ViewSelectedBy>
+      <TableControl>
+        <TableHeaders>
+          <TableColumnHeader>
+            <Label>Handle</Label>
+            <Alignment>left</Alignment>
+          </TableColumnHeader>
+          <TableColumnHeader>
+            <Label>ProcessId</Label>
+            <Alignment>left</Alignment>
+          </TableColumnHeader>
+          <TableColumnHeader>
+            <Label>ThreadId</Label>
+            <Alignment>left</Alignment>
+          </TableColumnHeader>
+          <TableColumnHeader>
+            <Label>ClassName</Label>
+            <Alignment>left</Alignment>
+          </TableColumnHeader>
+        </TableHeaders>
+        <TableRowEntries>
+          <TableRowEntry>
+            <TableColumnItems>
+              <TableColumnItem>
+                <PropertyName>Handle</PropertyName>
+              </TableColumnItem>
+              <TableColumnItem>
+                <PropertyName>ProcessId</PropertyName>
+              </TableColumnItem>
+              <TableColumnItem>
+                <PropertyName>ThreadId</PropertyName>
+              </TableColumnItem>
+              <TableColumnItem>
+                <PropertyName>ClassName</PropertyName>
+              </TableColumnItem>
+            </TableColumnItems>
+          </TableRowEntry>
+        </TableRowEntries>
+      </TableControl>
+    </View>
+    <View>
+      <Name>DllExport</Name>
+      <ViewSelectedBy>
+        <TypeName>NtApiDotNet.Win32.DllExport</TypeName>
+      </ViewSelectedBy>
+      <TableControl>
+        <TableHeaders>
+          <TableColumnHeader>
+            <Label>Ordinal</Label>
+            <Alignment>left</Alignment>
+          </TableColumnHeader>
+          <TableColumnHeader>
+            <Label>Name</Label>
+            <Alignment>left</Alignment>
+          </TableColumnHeader>
+          <TableColumnHeader>
+            <Label>Address</Label>
+            <Alignment>left</Alignment>
+          </TableColumnHeader>
+        </TableHeaders>
+        <TableRowEntries>
+          <TableRowEntry>
+            <TableColumnItems>
+              <TableColumnItem>
+                <PropertyName>Ordinal</PropertyName>
+              </TableColumnItem>
+              <TableColumnItem>
+                <PropertyName>Name</PropertyName>
+              </TableColumnItem>
+              <TableColumnItem>
+                <ScriptBlock>if ($_.Address -eq 0) { $_.Forwarder } else { "0x{0:X}" -f $_.Address }</ScriptBlock>
+              </TableColumnItem>
+            </TableColumnItems>
+          </TableRowEntry>
+        </TableRowEntries>
+      </TableControl>
+    </View>
+    <View>
+      <Name>DllImportFunction</Name>
+      <ViewSelectedBy>
+        <TypeName>NtApiDotNet.Win32.DllImportFunction</TypeName>
+      </ViewSelectedBy>
+      <TableControl>
+        <TableHeaders>
+          <TableColumnHeader>
+            <Label>Name</Label>
+            <Alignment>left</Alignment>
+          </TableColumnHeader>
+          <TableColumnHeader>
+            <Label>Address</Label>
+            <Alignment>left</Alignment>
+          </TableColumnHeader>
+        </TableHeaders>
+        <TableRowEntries>
+          <TableRowEntry>
+            <TableColumnItems>
+              <TableColumnItem>
+                <PropertyName>Name</PropertyName>
+              </TableColumnItem>
+              <TableColumnItem>
+                <PropertyName>Address</PropertyName>
+                <FormatString>X08</FormatString>
+              </TableColumnItem>
+            </TableColumnItems>
+          </TableRowEntry>
+        </TableRowEntries>
+      </TableControl>
+    </View>
+    <View>
+      <Name>DllImport</Name>
+      <ViewSelectedBy>
+        <TypeName>NtApiDotNet.Win32.DllImport</TypeName>
+      </ViewSelectedBy>
+      <TableControl>
+        <TableHeaders>
+          <TableColumnHeader>
+            <Label>DllName</Label>
+            <Alignment>left</Alignment>
+          </TableColumnHeader>
+          <TableColumnHeader>
+            <Label>FunctionCount</Label>
+            <Alignment>left</Alignment>
+          </TableColumnHeader>
+          <TableColumnHeader>
+            <Label>DelayLoaded</Label>
+            <Alignment>left</Alignment>
+          </TableColumnHeader>
+        </TableHeaders>
+        <TableRowEntries>
+          <TableRowEntry>
+            <TableColumnItems>
+              <TableColumnItem>
+                <PropertyName>DllName</PropertyName>
+              </TableColumnItem>
+              <TableColumnItem>
+                <PropertyName>FunctionCount</PropertyName>
+              </TableColumnItem>
+              <TableColumnItem>
+                <PropertyName>DelayLoaded</PropertyName>
+              </TableColumnItem>
+            </TableColumnItems>
+          </TableRowEntry>
+        </TableRowEntries>
+      </TableControl>
+    </View>
+    <View>
+      <Name>DllImport</Name>
+      <ViewSelectedBy>
+        <TypeName>NtApiDotNet.NtProcessMitigations</TypeName>
+      </ViewSelectedBy>
+      <CustomControl>
+        <CustomEntries>
+          <CustomEntry>
+            <CustomItem>
+              <Text>&lt;PROCESS </Text>
+              <ExpressionBinding>
+                <ScriptBlock>$_.ProcessId</ScriptBlock>
+              </ExpressionBinding>
+              <Text> - </Text>
+              <ExpressionBinding>
+                <ScriptBlock>$_.Name</ScriptBlock>
+              </ExpressionBinding>
+              <Text>&gt;</Text>
+              <NewLine/>
+              <Frame>
+                <LeftIndent>2</LeftIndent>
+                <CustomItem>
+                  <Text>ImagePath: </Text>
+                  <ExpressionBinding>
+                    <ScriptBlock>$_.ImagePath</ScriptBlock>
+                  </ExpressionBinding>
+                  <NewLine/>
+                  <Text>Win32ImagePath: </Text>
+                  <ExpressionBinding>
+                    <ScriptBlock>$_.Win32ImagePath</ScriptBlock>
+                  </ExpressionBinding>
+                  <NewLine/>
+                  <Text>CommandLine: </Text>
+                  <ExpressionBinding>
+                    <ScriptBlock>$_.CommandLine</ScriptBlock>
+                  </ExpressionBinding>
+                  <NewLine/>
+                  <Text>IsRestricted: </Text>
+                  <ExpressionBinding>
+                    <ScriptBlock>$_.IsRestricted</ScriptBlock>
+                  </ExpressionBinding>
+                  <NewLine/>
+                  <Text>IsAppContainer: </Text>
+                  <ExpressionBinding>
+                    <ScriptBlock>$_.IsAppContainer</ScriptBlock>
+                  </ExpressionBinding>
+                  <NewLine/>
+                  <Text>IsLowPrivilegeAppContainer: </Text>
+                  <ExpressionBinding>
+                    <ScriptBlock>$_.IsLowPrivilegeAppContainer</ScriptBlock>
+                  </ExpressionBinding>
+                  <NewLine/>
+                  <Text>IntegrityLevel: </Text>
+                  <ExpressionBinding>
+                    <ScriptBlock>$_.IntegrityLevel</ScriptBlock>
+                  </ExpressionBinding>
+                  <NewLine/>
+                </CustomItem>
+              </Frame>
+              <NewLine/>
+              <Text>[SYSTEM CALL DISABLE]</Text>
+              <NewLine/>
+              <Frame>
+                <LeftIndent>2</LeftIndent>
+                <CustomItem>
+                  <Text>DisallowWin32kSystemCalls: </Text>
+                  <ExpressionBinding>
+                    <ScriptBlock>$_.DisallowWin32kSystemCalls</ScriptBlock>
+                  </ExpressionBinding>
+                  <NewLine/>
+                  <Text>AuditDisallowWin32kSystemCalls: </Text>
+                  <ExpressionBinding>
+                    <ScriptBlock>$_.AuditDisallowWin32kSystemCalls</ScriptBlock>
+                  </ExpressionBinding>
+                  <NewLine/>
+                </CustomItem>
+              </Frame>
+              <NewLine/>
+              <Text>[DEP]</Text>
+              <NewLine/>
+              <Frame>
+                <LeftIndent>2</LeftIndent>
+                <CustomItem>
+                  <Text>DepEnabled: </Text>
+                  <ExpressionBinding>
+                    <ScriptBlock>$_.DepEnabled</ScriptBlock>
+                  </ExpressionBinding>
+                  <NewLine/>
+                  <Text>DisableAtlThunkEmulation: </Text>
+                  <ExpressionBinding>
+                    <ScriptBlock>$_.DisableAtlThunkEmulation</ScriptBlock>
+                  </ExpressionBinding>
+                  <NewLine/>
+                  <Text>DepPermanent: </Text>
+                  <ExpressionBinding>
+                    <ScriptBlock>$_.DepPermanent</ScriptBlock>
+                  </ExpressionBinding>
+                  <NewLine/>
+                </CustomItem>
+              </Frame>
+              <NewLine/>
+              <Text>[ASLR]</Text>
+              <NewLine/>
+              <Frame>
+                <LeftIndent>2</LeftIndent>
+                <CustomItem>
+                  <Text>EnableBottomUpRandomization: </Text>
+                  <ExpressionBinding>
+                    <ScriptBlock>$_.EnableBottomUpRandomization</ScriptBlock>
+                  </ExpressionBinding>
+                  <NewLine/>
+                  <Text>EnableForceRelocateImages: </Text>
+                  <ExpressionBinding>
+                    <ScriptBlock>$_.EnableForceRelocateImages</ScriptBlock>
+                  </ExpressionBinding>
+                  <NewLine/>
+                  <Text>EnableHighEntropy: </Text>
+                  <ExpressionBinding>
+                    <ScriptBlock>$_.EnableHighEntropy</ScriptBlock>
+                  </ExpressionBinding>
+                  <NewLine/>
+                  <Text>DisallowStrippedImages: </Text>
+                  <ExpressionBinding>
+                    <ScriptBlock>$_.DisallowStrippedImages</ScriptBlock>
+                  </ExpressionBinding>
+                  <NewLine/>
+                </CustomItem>
+              </Frame>
+              <NewLine/>
+              <Text>[STRICT HANDLE CHECK]</Text>
+              <NewLine/>
+              <Frame>
+                <LeftIndent>2</LeftIndent>
+                <CustomItem>
+                  <Text>RaiseExceptionOnInvalidHandleReference: </Text>
+                  <ExpressionBinding>
+                    <ScriptBlock>$_.RaiseExceptionOnInvalidHandleReference</ScriptBlock>
+                  </ExpressionBinding>
+                  <NewLine/>
+                  <Text>HandleExceptionsPermanentlyEnabled: </Text>
+                  <ExpressionBinding>
+                    <ScriptBlock>$_.HandleExceptionsPermanentlyEnabled</ScriptBlock>
+                  </ExpressionBinding>
+                  <NewLine/>
+                </CustomItem>
+              </Frame>
+              <NewLine/>
+              <Text>[FONT DISABLE]</Text>
+              <NewLine/>
+              <Frame>
+                <LeftIndent>2</LeftIndent>
+                <CustomItem>
+                  <Text>DisableNonSystemFonts: </Text>
+                  <ExpressionBinding>
+                    <ScriptBlock>$_.DisableNonSystemFonts</ScriptBlock>
+                  </ExpressionBinding>
+                  <NewLine/>
+                  <Text>AuditNonSystemFontLoading: </Text>
+                  <ExpressionBinding>
+                    <ScriptBlock>$_.AuditNonSystemFontLoading</ScriptBlock>
+                  </ExpressionBinding>
+                  <NewLine/>
+                </CustomItem>
+              </Frame>
+              <NewLine/>
+              <Text>[DYNAMIC CODE]</Text>
+              <NewLine/>
+              <Frame>
+                <LeftIndent>2</LeftIndent>
+                <CustomItem>
+                  <Text>ProhibitDynamicCode: </Text>
+                  <ExpressionBinding>
+                    <ScriptBlock>$_.ProhibitDynamicCode</ScriptBlock>
+                  </ExpressionBinding>
+                  <NewLine/>
+                  <Text>AllowThreadOptOut: </Text>
+                  <ExpressionBinding>
+                    <ScriptBlock>$_.AllowThreadOptOut</ScriptBlock>
+                  </ExpressionBinding>
+                  <NewLine/>
+                  <Text>AllowRemoteDowngrade: </Text>
+                  <ExpressionBinding>
+                    <ScriptBlock>$_.AllowRemoteDowngrade</ScriptBlock>
+                  </ExpressionBinding>
+                  <NewLine/>
+                  <Text>AuditProhibitDynamicCode: </Text>
+                  <ExpressionBinding>
+                    <ScriptBlock>$_.AuditProhibitDynamicCode</ScriptBlock>
+                  </ExpressionBinding>
+                  <NewLine/>
+                </CustomItem>
+              </Frame>
+              <NewLine/>
+              <Text>[EXTENSION POINTS]</Text>
+              <NewLine/>
+              <Frame>
+                <LeftIndent>2</LeftIndent>
+                <CustomItem>
+                  <Text>DisableExtensionPoints: </Text>
+                  <ExpressionBinding>
+                    <ScriptBlock>$_.DisableExtensionPoints</ScriptBlock>
+                  </ExpressionBinding>
+                  <NewLine/>
+                </CustomItem>
+              </Frame>
+              <NewLine/>
+              <Text>[CONTROL FLOW GUARD]</Text>
+              <NewLine/>
+              <Frame>
+                <LeftIndent>2</LeftIndent>
+                <CustomItem>
+                  <Text>EnabledControlFlowGuard: </Text>
+                  <ExpressionBinding>
+                    <ScriptBlock>$_.EnabledControlFlowGuard</ScriptBlock>
+                  </ExpressionBinding>
+                  <NewLine/>
+                  <Text>EnableExportSuppression: </Text>
+                  <ExpressionBinding>
+                    <ScriptBlock>$_.EnableExportSuppression</ScriptBlock>
+                  </ExpressionBinding>
+                  <NewLine/>
+                  <Text>ControlFlowGuardStrictMode: </Text>
+                  <ExpressionBinding>
+                    <ScriptBlock>$_.ControlFlowGuardStrictMode</ScriptBlock>
+                  </ExpressionBinding>
+                  <NewLine/>
+                </CustomItem>
+              </Frame>
+              <NewLine/>
+              <Text>[SIGNATURE]</Text>
+              <NewLine/>
+              <Frame>
+                <LeftIndent>2</LeftIndent>
+                <CustomItem>
+                  <Text>MicrosoftSignedOnly: </Text>
+                  <ExpressionBinding>
+                    <ScriptBlock>$_.MicrosoftSignedOnly</ScriptBlock>
+                  </ExpressionBinding>
+                  <NewLine/>
+                  <Text>StoreSignedOnly: </Text>
+                  <ExpressionBinding>
+                    <ScriptBlock>$_.StoreSignedOnly</ScriptBlock>
+                  </ExpressionBinding>
+                  <NewLine/>
+                  <Text>SignedMitigationOptIn: </Text>
+                  <ExpressionBinding>
+                    <ScriptBlock>$_.SignedMitigationOptIn</ScriptBlock>
+                  </ExpressionBinding>
+                  <NewLine/>
+                  <Text>AuditMicrosoftSignedOnly: </Text>
+                  <ExpressionBinding>
+                    <ScriptBlock>$_.AuditMicrosoftSignedOnly</ScriptBlock>
+                  </ExpressionBinding>
+                  <NewLine/>
+                  <Text>AuditStoreSignedOnly: </Text>
+                  <ExpressionBinding>
+                    <ScriptBlock>$_.AuditStoreSignedOnly</ScriptBlock>
+                  </ExpressionBinding>
+                  <NewLine/>
+                </CustomItem>
+              </Frame>
+              <NewLine/>
+              <Text>[IMAGE LOAD]</Text>
+              <NewLine/>
+              <Frame>
+                <LeftIndent>2</LeftIndent>
+                <CustomItem>
+                  <Text>NoRemoteImages: </Text>
+                  <ExpressionBinding>
+                    <ScriptBlock>$_.NoRemoteImages</ScriptBlock>
+                  </ExpressionBinding>
+                  <NewLine/>
+                  <Text>NoLowMandatoryLabelImages: </Text>
+                  <ExpressionBinding>
+                    <ScriptBlock>$_.NoLowMandatoryLabelImages</ScriptBlock>
+                  </ExpressionBinding>
+                  <NewLine/>
+                  <Text>PreferSystem32Images: </Text>
+                  <ExpressionBinding>
+                    <ScriptBlock>$_.PreferSystem32Images</ScriptBlock>
+                  </ExpressionBinding>
+                  <NewLine/>
+                  <Text>AuditNoRemoteImages: </Text>
+                  <ExpressionBinding>
+                    <ScriptBlock>$_.AuditNoRemoteImages</ScriptBlock>
+                  </ExpressionBinding>
+                  <NewLine/>
+                  <Text>AuditNoLowMandatoryLabelImages: </Text>
+                  <ExpressionBinding>
+                    <ScriptBlock>$_.AuditNoLowMandatoryLabelImages</ScriptBlock>
+                  </ExpressionBinding>
+                  <NewLine/>
+                </CustomItem>
+              </Frame>
+              <NewLine/>
+              <Text>[SYSTEM CALL FILTER]</Text>
+              <NewLine/>
+              <Frame>
+                <LeftIndent>2</LeftIndent>
+                <CustomItem>
+                  <Text>SystemCallFilterId: </Text>
+                  <ExpressionBinding>
+                    <ScriptBlock>$_.SystemCallFilterId</ScriptBlock>
+                  </ExpressionBinding>
+                  <NewLine/>
+                </CustomItem>
+              </Frame>
+              <NewLine/>
+              <Text>[CHILD PROCESS]</Text>
+              <NewLine/>
+              <Frame>
+                <LeftIndent>2</LeftIndent>
+                <CustomItem>
+                  <Text>NoChildProcessCreation: </Text>
+                  <ExpressionBinding>
+                    <ScriptBlock>$_.NoChildProcessCreation</ScriptBlock>
+                  </ExpressionBinding>
+                  <NewLine/>
+                  <Text>AuditNoChildProcessCreation: </Text>
+                  <ExpressionBinding>
+                    <ScriptBlock>$_.AuditNoChildProcessCreation</ScriptBlock>
+                  </ExpressionBinding>
+                  <NewLine/>
+                  <Text>AllowSecureProcessCreation: </Text>
+                  <ExpressionBinding>
+                    <ScriptBlock>$_.AllowSecureProcessCreation</ScriptBlock>
+                  </ExpressionBinding>
+                  <NewLine/>
+                </CustomItem>
+              </Frame>
+              <NewLine/>
+              <Text>[PAYLOAD RESTRICTIONS]</Text>
+              <NewLine/>
+              <Frame>
+                <LeftIndent>2</LeftIndent>
+                <CustomItem>
+                  <Text>EnableExportAddressFilter: </Text>
+                  <ExpressionBinding>
+                    <ScriptBlock>$_.EnableExportAddressFilter</ScriptBlock>
+                  </ExpressionBinding>
+                  <NewLine/>
+                  <Text>AuditExportAddressFilter: </Text>
+                  <ExpressionBinding>
+                    <ScriptBlock>$_.AuditExportAddressFilter</ScriptBlock>
+                  </ExpressionBinding>
+                  <NewLine/>
+                  <Text>EnableExportAddressFilterPlus: </Text>
+                  <ExpressionBinding>
+                    <ScriptBlock>$_.EnableExportAddressFilterPlus</ScriptBlock>
+                  </ExpressionBinding>
+                  <NewLine/>
+                  <Text>AuditExportAddressFilterPlus: </Text>
+                  <ExpressionBinding>
+                    <ScriptBlock>$_.AuditExportAddressFilterPlus</ScriptBlock>
+                  </ExpressionBinding>
+                  <NewLine/>
+                  <Text>EnableImportAddressFilter: </Text>
+                  <ExpressionBinding>
+                    <ScriptBlock>$_.EnableImportAddressFilter</ScriptBlock>
+                  </ExpressionBinding>
+                  <NewLine/>
+                  <Text>AuditImportAddressFilter: </Text>
+                  <ExpressionBinding>
+                    <ScriptBlock>$_.AuditImportAddressFilter</ScriptBlock>
+                  </ExpressionBinding>
+                  <NewLine/>
+                  <Text>EnableRopStackPivot: </Text>
+                  <ExpressionBinding>
+                    <ScriptBlock>$_.EnableRopStackPivot</ScriptBlock>
+                  </ExpressionBinding>
+                  <NewLine/>
+                  <Text>AuditRopStackPivot: </Text>
+                  <ExpressionBinding>
+                    <ScriptBlock>$_.AuditRopStackPivot</ScriptBlock>
+                  </ExpressionBinding>
+                  <NewLine/>
+                  <Text>EnableRopCallerCheck: </Text>
+                  <ExpressionBinding>
+                    <ScriptBlock>$_.EnableRopCallerCheck</ScriptBlock>
+                  </ExpressionBinding>
+                  <NewLine/>
+                  <Text>AuditRopCallerCheck: </Text>
+                  <ExpressionBinding>
+                    <ScriptBlock>$_.AuditRopCallerCheck</ScriptBlock>
+                  </ExpressionBinding>
+                  <NewLine/>
+                  <Text>EnableRopSimExec: </Text>
+                  <ExpressionBinding>
+                    <ScriptBlock>$_.EnableRopSimExec</ScriptBlock>
+                  </ExpressionBinding>
+                  <NewLine/>
+                  <Text>AuditRopSimExec: </Text>
+                  <ExpressionBinding>
+                    <ScriptBlock>$_.AuditRopSimExec</ScriptBlock>
+                  </ExpressionBinding>
+                  <NewLine/>
+                </CustomItem>
+              </Frame>
+              <NewLine/>
+              <Text>[SIDE CHANNEL ISOLATION]</Text>
+              <NewLine/>
+              <Frame>
+                <LeftIndent>2</LeftIndent>
+                <CustomItem>
+                  <Text>SmtBranchTargetIsolation: </Text>
+                  <ExpressionBinding>
+                    <ScriptBlock>$_.SmtBranchTargetIsolation</ScriptBlock>
+                  </ExpressionBinding>
+                  <NewLine/>
+                  <Text>IsolateSecurityDomain: </Text>
+                  <ExpressionBinding>
+                    <ScriptBlock>$_.IsolateSecurityDomain</ScriptBlock>
+                  </ExpressionBinding>
+                  <NewLine/>
+                  <Text>DisablePageCombine: </Text>
+                  <ExpressionBinding>
+                    <ScriptBlock>$_.DisablePageCombine</ScriptBlock>
+                  </ExpressionBinding>
+                  <NewLine/>
+                  <Text>SpeculativeStoreBypassDisable: </Text>
+                  <ExpressionBinding>
+                    <ScriptBlock>$_.SpeculativeStoreBypassDisable</ScriptBlock>
+                  </ExpressionBinding>
+                  <NewLine/>
+                </CustomItem>
+              </Frame>
+            </CustomItem>
+          </CustomEntry>
+        </CustomEntries>
+      </CustomControl>
+    </View>
+    <View>
+      <Name>ObjectDirectoryInformationTable</Name>
+      <ViewSelectedBy>
+        <TypeName>NtApiDotNet.ObjectDirectoryInformation</TypeName>
+      </ViewSelectedBy>
+      <TableControl>
+        <TableHeaders>
+          <TableColumnHeader>
+            <Label>Name</Label>
+            <Alignment>left</Alignment>
+          </TableColumnHeader>
+          <TableColumnHeader>
+            <Label>TypeName</Label>
+            <Alignment>left</Alignment>
+          </TableColumnHeader>
+        </TableHeaders>
+        <TableRowEntries>
+          <TableRowEntry>
+            <TableColumnItems>
+              <TableColumnItem>
+                <PropertyName>Name</PropertyName>
+              </TableColumnItem>
+              <TableColumnItem>
+                <PropertyName>NtTypeName</PropertyName>
+              </TableColumnItem>
+            </TableColumnItems>
+          </TableRowEntry>
+        </TableRowEntries>
+      </TableControl>
+    </View>
+    <View>
+      <Name>AuthenticationPackageTable</Name>
+      <ViewSelectedBy>
+        <TypeName>NtApiDotNet.Win32.Security.Authentication.AuthenticationPackage</TypeName>
+      </ViewSelectedBy>
+      <TableControl>
+        <TableHeaders>
+          <TableColumnHeader>
+            <Label>Name</Label>
+            <Alignment>left</Alignment>
+          </TableColumnHeader>
+          <TableColumnHeader>
+            <Label>Comment</Label>
+            <Alignment>left</Alignment>
+          </TableColumnHeader>
+          <TableColumnHeader>
+            <Label>Capabilities</Label>
+            <Alignment>left</Alignment>
+          </TableColumnHeader>
+        </TableHeaders>
+        <TableRowEntries>
+          <TableRowEntry>
+            <TableColumnItems>
+              <TableColumnItem>
+                <PropertyName>Name</PropertyName>
+              </TableColumnItem>
+              <TableColumnItem>
+                <PropertyName>Comment</PropertyName>
+              </TableColumnItem>
+              <TableColumnItem>
+                <PropertyName>Capabilities</PropertyName>
+              </TableColumnItem>
+            </TableColumnItems>
+          </TableRowEntry>
+        </TableRowEntries>
+      </TableControl>
+    </View>
+    <View>
+      <Name>SafeLoadLibraryHandleTable</Name>
+      <ViewSelectedBy>
+        <TypeName>NtApiDotNet.Win32.SafeLoadLibraryHandle</TypeName>
+      </ViewSelectedBy>
+      <TableControl>
+        <TableHeaders>
+          <TableColumnHeader>
+            <Label>Name</Label>
+            <Alignment>left</Alignment>
+          </TableColumnHeader>
+          <TableColumnHeader>
+            <Label>ImageBase</Label>
+            <Alignment>left</Alignment>
+          </TableColumnHeader>
+          <TableColumnHeader>
+            <Label>EntryPoint</Label>
+            <Alignment>left</Alignment>
+          </TableColumnHeader>
+        </TableHeaders>
+        <TableRowEntries>
+          <TableRowEntry>
+            <TableColumnItems>
+              <TableColumnItem>
+                <PropertyName>Name</PropertyName>
+              </TableColumnItem>
+              <TableColumnItem>
+                <PropertyName>ImageBase</PropertyName>
+                <FormatString>X016</FormatString>
+              </TableColumnItem>
+              <TableColumnItem>
+                <PropertyName>EntryPointAddress</PropertyName>
+                <FormatString>X016</FormatString>
+              </TableColumnItem>
+            </TableColumnItems>
+          </TableRowEntry>
+        </TableRowEntries>
+      </TableControl>
+    </View>
+    <View>
+      <Name>ProcessModuleTable</Name>
+      <ViewSelectedBy>
+        <TypeName>NtApiDotNet.ProcessModule</TypeName>
+      </ViewSelectedBy>
+      <TableControl>
+        <TableHeaders>
+          <TableColumnHeader>
+            <Label>Name</Label>
+            <Alignment>left</Alignment>
+          </TableColumnHeader>
+          <TableColumnHeader>
+            <Label>ImageBase</Label>
+            <Alignment>left</Alignment>
+          </TableColumnHeader>
+          <TableColumnHeader>
+            <Label>ImageSize</Label>
+            <Alignment>left</Alignment>
+          </TableColumnHeader>
+        </TableHeaders>
+        <TableRowEntries>
+          <TableRowEntry>
+            <TableColumnItems>
+              <TableColumnItem>
+                <PropertyName>Name</PropertyName>
+              </TableColumnItem>
+              <TableColumnItem>
+                <PropertyName>ImageBase</PropertyName>
+                <FormatString>X016</FormatString>
+              </TableColumnItem>
+              <TableColumnItem>
+                <PropertyName>ImageSize</PropertyName>
+              </TableColumnItem>
+            </TableColumnItems>
+          </TableRowEntry>
+        </TableRowEntries>
+      </TableControl>
+    </View>
+    <View>
+      <Name>SafeKernelObjectHandleTable</Name>
+      <ViewSelectedBy>
+        <TypeName>NtApiDotNet.SafeKernelObjectHandle</TypeName>
+      </ViewSelectedBy>
+      <TableControl>
+        <TableHeaders>
+          <TableColumnHeader>
+            <Label>Handle</Label>
+            <Alignment>left</Alignment>
+          </TableColumnHeader>
+          <TableColumnHeader>
+            <Label>NtTypeName</Label>
+            <Alignment>left</Alignment>
+          </TableColumnHeader>
+          <TableColumnHeader>
+            <Label>Inherit</Label>
+            <Alignment>left</Alignment>
+          </TableColumnHeader>
+          <TableColumnHeader>
+            <Label>ProtectFromClose</Label>
+            <Alignment>left</Alignment>
+          </TableColumnHeader>
+          <TableColumnHeader>
+            <Label>IsClosed</Label>
+            <Alignment>left</Alignment>
+          </TableColumnHeader>
+        </TableHeaders>
+        <TableRowEntries>
+          <TableRowEntry>
+            <TableColumnItems>
+              <TableColumnItem>
+                <ScriptBlock>$_.DangerousGetHandle()</ScriptBlock>
+              </TableColumnItem>
+              <TableColumnItem>
+                <PropertyName>NtTypeName</PropertyName>
+              </TableColumnItem>
+              <TableColumnItem>
+                <PropertyName>Inherit</PropertyName>
+              </TableColumnItem>
+              <TableColumnItem>
+                <PropertyName>ProtectFromClose</PropertyName>
+              </TableColumnItem>
+              <TableColumnItem>
+                <PropertyName>IsClosed</PropertyName>
+              </TableColumnItem>
+            </TableColumnItems>
+          </TableRowEntry>
+        </TableRowEntries>
+      </TableControl>
+    </View>
+    <View>
+      <Name>MemoryInformationTable</Name>
+      <ViewSelectedBy>
+        <TypeName>NtApiDotNet.MemoryInformation</TypeName>
+      </ViewSelectedBy>
+      <TableControl>
+        <TableHeaders>
+          <TableColumnHeader>
+            <Label>Address</Label>
+            <Alignment>left</Alignment>
+          </TableColumnHeader>
+          <TableColumnHeader>
+            <Label>Size</Label>
+            <Alignment>left</Alignment>
+          </TableColumnHeader>
+          <TableColumnHeader>
+            <Label>Protect</Label>
+            <Alignment>left</Alignment>
+          </TableColumnHeader>
+          <TableColumnHeader>
+            <Label>Type</Label>
+            <Alignment>left</Alignment>
+          </TableColumnHeader>
+          <TableColumnHeader>
+            <Label>State</Label>
+            <Alignment>left</Alignment>
+          </TableColumnHeader>
+          <TableColumnHeader>
+            <Label>Name</Label>
+            <Alignment>left</Alignment>
+          </TableColumnHeader>
+        </TableHeaders>
+        <TableRowEntries>
+          <TableRowEntry>
+            <TableColumnItems>
+              <TableColumnItem>
+                <PropertyName>BaseAddress</PropertyName>
+                <FormatString>X016</FormatString>
+              </TableColumnItem>
+              <TableColumnItem>
+                <PropertyName>RegionSize</PropertyName>
+              </TableColumnItem>
+              <TableColumnItem>
+                <PropertyName>Protect</PropertyName>
+              </TableColumnItem>
+              <TableColumnItem>
+                <PropertyName>Type</PropertyName>
+              </TableColumnItem>
+              <TableColumnItem>
+                <PropertyName>State</PropertyName>
+              </TableColumnItem>
+              <TableColumnItem>
+                <PropertyName>Name</PropertyName>
+              </TableColumnItem>
+            </TableColumnItems>
+          </TableRowEntry>
+        </TableRowEntries>
+      </TableControl>
+    </View>
+    <View>
+      <Name>PrivilegeCheckResultTable</Name>
+      <ViewSelectedBy>
+        <TypeName>NtApiDotNet.PrivilegeCheckResult</TypeName>
+      </ViewSelectedBy>
+      <TableControl>
+        <TableHeaders>
+          <TableColumnHeader>
+            <Label>EnabledPrivileges</Label>
+            <Alignment>left</Alignment>
+          </TableColumnHeader>
+          <TableColumnHeader>
+            <Label>AllPrivilegesHeld</Label>
+            <Alignment>left</Alignment>
+          </TableColumnHeader>
+        </TableHeaders>
+        <TableRowEntries>
+          <TableRowEntry>
+            <TableColumnItems>
+              <TableColumnItem>
+                <PropertyName>EnabledPrivileges</PropertyName>
+              </TableColumnItem>
+              <TableColumnItem>
+                <PropertyName>AllPrivilegesHeld</PropertyName>
+              </TableColumnItem>
+            </TableColumnItems>
+          </TableRowEntry>
+        </TableRowEntries>
+      </TableControl>
+    </View>
+    <View>
+      <Name>ClaimSecurityAttributeTable</Name>
+      <ViewSelectedBy>
+        <TypeName>NtApiDotNet.ClaimSecurityAttribute</TypeName>
+      </ViewSelectedBy>
+      <TableControl>
+        <TableHeaders>
+          <TableColumnHeader>
+            <Label>Name</Label>
+            <Alignment>left</Alignment>
+          </TableColumnHeader>
+          <TableColumnHeader>
+            <Label>Flags</Label>
+            <Alignment>left</Alignment>
+          </TableColumnHeader>
+          <TableColumnHeader>
+            <Label>ValueType</Label>
+            <Alignment>left</Alignment>
+          </TableColumnHeader>
+          <TableColumnHeader>
+            <Label>Values</Label>
+            <Alignment>left</Alignment>
+          </TableColumnHeader>
+        </TableHeaders>
+        <TableRowEntries>
+          <TableRowEntry>
+            <TableColumnItems>
+              <TableColumnItem>
+                <PropertyName>Name</PropertyName>
+              </TableColumnItem>
+              <TableColumnItem>
+                <PropertyName>Flags</PropertyName>
+              </TableColumnItem>
+              <TableColumnItem>
+                <PropertyName>ValueType</PropertyName>
+              </TableColumnItem>
+              <TableColumnItem>
+                <PropertyName>Values</PropertyName>
+              </TableColumnItem>
+            </TableColumnItems>
+          </TableRowEntry>
+        </TableRowEntries>
+      </TableControl>
+    </View>
+    <View>
+      <Name>SecurityDescriptorInheritanceSourceTable</Name>
+      <ViewSelectedBy>
+        <TypeName>NtApiDotNet.Win32.Security.Authorization.SecurityDescriptorInheritanceSource</TypeName>
+      </ViewSelectedBy>
+      <TableControl>
+        <TableHeaders>
+          <TableColumnHeader>
+            <Label>Name</Label>
+            <Alignment>left</Alignment>
+          </TableColumnHeader>
+          <TableColumnHeader>
+            <Label>Depth</Label>
+            <Alignment>left</Alignment>
+          </TableColumnHeader>
+          <TableColumnHeader>
+            <Label>User</Label>
+            <Alignment>left</Alignment>
+          </TableColumnHeader>
+          <TableColumnHeader>
+            <Label>Access</Label>
+            <Alignment>left</Alignment>
+          </TableColumnHeader>
+        </TableHeaders>
+        <TableRowEntries>
+          <TableRowEntry>
+            <TableColumnItems>
+              <TableColumnItem>
+                <PropertyName>Name</PropertyName>
+              </TableColumnItem>
+              <TableColumnItem>
+                <PropertyName>Depth</PropertyName>
+              </TableColumnItem>
+              <TableColumnItem>
+                <ScriptBlock>$_.Sid.Name</ScriptBlock>
+              </TableColumnItem>
+              <TableColumnItem>
+                <PropertyName>GenericAccess</PropertyName>
+              </TableColumnItem>
+            </TableColumnItems>
+          </TableRowEntry>
+        </TableRowEntries>
+      </TableControl>
+    </View>
+    <View>
+      <Name>Win32SetSecurityDescriptorResultTable</Name>
+      <ViewSelectedBy>
+        <TypeName>NtObjectManager.Cmdlets.Win32.Win32SetSecurityDescriptorResult</TypeName>
+      </ViewSelectedBy>
+      <TableControl>
+        <TableHeaders>
+          <TableColumnHeader>
+            <Label>SecuritySet</Label>
+            <Alignment>left</Alignment>
+          </TableColumnHeader>
+          <TableColumnHeader>
+            <Label>Error</Label>
+            <Alignment>left</Alignment>
+          </TableColumnHeader>
+          <TableColumnHeader>
+            <Label>Name</Label>
+            <Alignment>left</Alignment>
+          </TableColumnHeader>
+        </TableHeaders>
+        <TableRowEntries>
+          <TableRowEntry>
+            <TableColumnItems>
+              <TableColumnItem>
+                <PropertyName>SecuritySet</PropertyName>
+              </TableColumnItem>
+              <TableColumnItem>
+                <PropertyName>Error</PropertyName>
+              </TableColumnItem>
+              <TableColumnItem>
+                <PropertyName>Name</PropertyName>
+              </TableColumnItem>
+            </TableColumnItems>
+          </TableRowEntry>
+        </TableRowEntries>
+      </TableControl>
+    </View>
+    <View>
+      <Name>ObjectTypeTreeTable</Name>
+      <ViewSelectedBy>
+        <TypeName>NtApiDotNet.Utilities.Security.ObjectTypeTree</TypeName>
+      </ViewSelectedBy>
+      <TableControl>
+        <TableHeaders>
+          <TableColumnHeader>
+            <Label>ObjectType</Label>
+            <Alignment>left</Alignment>
+          </TableColumnHeader>
+          <TableColumnHeader>
+            <Label>Node Count</Label>
+            <Alignment>left</Alignment>
+          </TableColumnHeader>
+        </TableHeaders>
+        <TableRowEntries>
+          <TableRowEntry>
+            <TableColumnItems>
+              <TableColumnItem>
+                <PropertyName>ObjectType</PropertyName>
+              </TableColumnItem>
+              <TableColumnItem>
+                <ScriptBlock>$_.Nodes.Count</ScriptBlock>
+              </TableColumnItem>
+            </TableColumnItems>
+          </TableRowEntry>
+        </TableRowEntries>
+      </TableControl>
+    </View>
+    <View>
+      <Name>AuthZAccessCheckResultGenericTable</Name>
+      <ViewSelectedBy>
+        <TypeName>NtApiDotNet.Win32.Security.Authorization.AuthZAccessCheckResult</TypeName>
+      </ViewSelectedBy>
+      <TableControl>
+        <TableHeaders>
+          <TableColumnHeader>
+            <Label>Error</Label>
+            <Alignment>left</Alignment>
+          </TableColumnHeader>
+          <TableColumnHeader>
+            <Label>Granted Access</Label>
+            <Alignment>left</Alignment>
+          </TableColumnHeader>
+          <TableColumnHeader>
+            <Label>Privileges</Label>
+            <Alignment>left</Alignment>
+          </TableColumnHeader>
+        </TableHeaders>
+        <TableRowEntries>
+          <TableRowEntry>
+            <TableColumnItems>
+              <TableColumnItem>
+                <PropertyName>Error</PropertyName>
+              </TableColumnItem>
+              <TableColumnItem>
+                <PropertyName>SpecificGenericGrantedAccess</PropertyName>
+              </TableColumnItem>
+              <TableColumnItem>
+                <ScriptBlock>if ($_.PrivilegesRequired.Count -gt 0) { $_.PrivilegesRequired } else { "NONE" }</ScriptBlock>
+              </TableColumnItem>
+            </TableColumnItems>
+          </TableRowEntry>
+        </TableRowEntries>
+      </TableControl>
+    </View>
+    <View>
+      <Name>AccessCheckResultGenericTable</Name>
+      <ViewSelectedBy>
+        <TypeName>NtApiDotNet.AccessCheckResultGeneric</TypeName>
+      </ViewSelectedBy>
+      <TableControl>
+        <TableHeaders>
+          <TableColumnHeader>
+            <Label>Status</Label>
+            <Alignment>left</Alignment>
+          </TableColumnHeader>
+          <TableColumnHeader>
+            <Label>Granted Access</Label>
+            <Alignment>left</Alignment>
+          </TableColumnHeader>
+          <TableColumnHeader>
+            <Label>Privileges</Label>
+            <Alignment>left</Alignment>
+          </TableColumnHeader>
+        </TableHeaders>
+        <TableRowEntries>
+          <TableRowEntry>
+            <TableColumnItems>
+              <TableColumnItem>
+                <PropertyName>Status</PropertyName>
+              </TableColumnItem>
+              <TableColumnItem>
+                <PropertyName>SpecificGenericGrantedAccess</PropertyName>
+              </TableColumnItem>
+              <TableColumnItem>
+                <ScriptBlock>if ($_.PrivilegesRequired.Count -gt 0) { $_.PrivilegesRequired } else { "NONE" }</ScriptBlock>
+              </TableColumnItem>
+            </TableColumnItems>
+          </TableRowEntry>
+        </TableRowEntries>
+      </TableControl>
+    </View>
+    <View>
+      <Name>CentralAccessPolicyTable</Name>
+      <ViewSelectedBy>
+        <TypeName>NtApiDotNet.Security.Policy.CentralAccessPolicy</TypeName>
+      </ViewSelectedBy>
+      <TableControl>
+        <TableHeaders>
+          <TableColumnHeader>
+            <Label>Name</Label>
+            <Alignment>left</Alignment>
+          </TableColumnHeader>
+          <TableColumnHeader>
+            <Label>CapId</Label>
+            <Alignment>left</Alignment>
+          </TableColumnHeader>
+          <TableColumnHeader>
+            <Label>Description</Label>
+            <Alignment>left</Alignment>
+          </TableColumnHeader>
+        </TableHeaders>
+        <TableRowEntries>
+          <TableRowEntry>
+            <TableColumnItems>
+              <TableColumnItem>
+                <PropertyName>Name</PropertyName>
+              </TableColumnItem>
+              <TableColumnItem>
+                <PropertyName>CapId</PropertyName>
+              </TableColumnItem>
+              <TableColumnItem>
+                <PropertyName>Description</PropertyName>
+              </TableColumnItem>
+            </TableColumnItems>
+          </TableRowEntry>
+        </TableRowEntries>
+      </TableControl>
+    </View>
+    <View>
+      <Name>CentralAccessRuleTable</Name>
+      <ViewSelectedBy>
+        <TypeName>NtApiDotNet.Security.Policy.CentralAccessRule</TypeName>
+      </ViewSelectedBy>
+      <TableControl>
+        <TableHeaders>
+          <TableColumnHeader>
+            <Label>Name</Label>
+            <Alignment>left</Alignment>
+          </TableColumnHeader>
+          <TableColumnHeader>
+            <Label>Description</Label>
+            <Alignment>left</Alignment>
+          </TableColumnHeader>
+          <TableColumnHeader>
+            <Label>AppliesTo</Label>
+            <Alignment>left</Alignment>
+          </TableColumnHeader>
+        </TableHeaders>
+        <TableRowEntries>
+          <TableRowEntry>
+            <TableColumnItems>
+              <TableColumnItem>
+                <PropertyName>Name</PropertyName>
+              </TableColumnItem>
+              <TableColumnItem>
+                <PropertyName>Description</PropertyName>
+              </TableColumnItem>
+              <TableColumnItem>
+                <PropertyName>AppliesTo</PropertyName>
+              </TableColumnItem>
+            </TableColumnItems>
+          </TableRowEntry>
+        </TableRowEntries>
+      </TableControl>
+    </View>
+    <View>
+      <Name>AuditCategoryTable</Name>
+      <ViewSelectedBy>
+        <TypeName>NtApiDotNet.Win32.Security.Audit.AuditCategory</TypeName>
+      </ViewSelectedBy>
+      <TableControl>
+        <TableHeaders>
+          <TableColumnHeader>
+            <Label>Name</Label>
+            <Alignment>left</Alignment>
+          </TableColumnHeader>
+          <TableColumnHeader>
+            <Label>SubCategory Count</Label>
+            <Alignment>left</Alignment>
+          </TableColumnHeader>
+        </TableHeaders>
+        <TableRowEntries>
+          <TableRowEntry>
+            <TableColumnItems>
+              <TableColumnItem>
+                <PropertyName>Name</PropertyName>
+              </TableColumnItem>
+              <TableColumnItem>
+                <ScriptBlock>$_.SubCategories.Count</ScriptBlock>
+              </TableColumnItem>
+            </TableColumnItems>
+          </TableRowEntry>
+        </TableRowEntries>
+      </TableControl>
+    </View>
+    <View>
+      <Name>AuditSubCategoryTable</Name>
+      <ViewSelectedBy>
+        <TypeName>NtApiDotNet.Win32.Security.Audit.AuditSubCategory</TypeName>
+      </ViewSelectedBy>
+      <TableControl>
+        <TableHeaders>
+          <TableColumnHeader>
+            <Label>Name</Label>
+            <Alignment>left</Alignment>
+          </TableColumnHeader>
+          <TableColumnHeader>
+            <Label>Policy</Label>
+            <Alignment>left</Alignment>
+          </TableColumnHeader>
+        </TableHeaders>
+        <TableRowEntries>
+          <TableRowEntry>
+            <TableColumnItems>
+              <TableColumnItem>
+                <PropertyName>Name</PropertyName>
+              </TableColumnItem>
+              <TableColumnItem>
+                <PropertyName>Policy</PropertyName>
+              </TableColumnItem>
+            </TableColumnItems>
+          </TableRowEntry>
+        </TableRowEntries>
+      </TableControl>
+    </View>
+    <View>
+      <Name>AuditPerUserCategoryTable</Name>
+      <ViewSelectedBy>
+        <TypeName>NtApiDotNet.Win32.Security.Audit.AuditPerUserCategory</TypeName>
+      </ViewSelectedBy>
+      <TableControl>
+        <TableHeaders>
+          <TableColumnHeader>
+            <Label>Name</Label>
+            <Alignment>left</Alignment>
+          </TableColumnHeader>
+          <TableColumnHeader>
+            <Label>User</Label>
+            <Alignment>left</Alignment>
+          </TableColumnHeader>
+          <TableColumnHeader>
+            <Label>SubCategory Count</Label>
+            <Alignment>left</Alignment>
+          </TableColumnHeader>
+        </TableHeaders>
+        <TableRowEntries>
+          <TableRowEntry>
+            <TableColumnItems>
+              <TableColumnItem>
+                <PropertyName>Name</PropertyName>
+              </TableColumnItem>
+              <TableColumnItem>
+                <ScriptBlock>$_.User.Name</ScriptBlock>
+              </TableColumnItem>
+              <TableColumnItem>
+                <ScriptBlock>$_.SubCategories.Count</ScriptBlock>
+              </TableColumnItem>
+            </TableColumnItems>
+          </TableRowEntry>
+        </TableRowEntries>
+      </TableControl>
+    </View>
+    <View>
+      <Name>AuditPerUserSubCategoryTable</Name>
+      <ViewSelectedBy>
+        <TypeName>NtApiDotNet.Win32.Security.Audit.AuditPerUserSubCategory</TypeName>
+      </ViewSelectedBy>
+      <TableControl>
+        <TableHeaders>
+          <TableColumnHeader>
+            <Label>Name</Label>
+            <Alignment>left</Alignment>
+          </TableColumnHeader>
+          <TableColumnHeader>
+            <Label>User</Label>
+            <Alignment>left</Alignment>
+          </TableColumnHeader>
+          <TableColumnHeader>
+            <Label>Policy</Label>
+            <Alignment>left</Alignment>
+          </TableColumnHeader>
+        </TableHeaders>
+        <TableRowEntries>
+          <TableRowEntry>
+            <TableColumnItems>
+              <TableColumnItem>
+                <PropertyName>Name</PropertyName>
+              </TableColumnItem>
+              <TableColumnItem>
+                <ScriptBlock>$_.User.Name</ScriptBlock>
+              </TableColumnItem>
+              <TableColumnItem>
+                <PropertyName>Policy</PropertyName>
+              </TableColumnItem>
+            </TableColumnItems>
+          </TableRowEntry>
+        </TableRowEntries>
+      </TableControl>
+    </View>
+    <View>
+      <Name>LogonSessionTable</Name>
+      <ViewSelectedBy>
+        <TypeName>NtApiDotNet.Win32.Security.Authentication.LogonSession</TypeName>
+      </ViewSelectedBy>
+      <TableControl>
+        <TableHeaders>
+          <TableColumnHeader>
+            <Label>LogonId</Label>
+            <Alignment>left</Alignment>
+          </TableColumnHeader>
+          <TableColumnHeader>
+            <Label>UserName</Label>
+            <Alignment>left</Alignment>
+          </TableColumnHeader>
+          <TableColumnHeader>
+            <Label>LogonType</Label>
+            <Alignment>left</Alignment>
+          </TableColumnHeader>
+          <TableColumnHeader>
+            <Label>SessionId</Label>
+            <Alignment>left</Alignment>
+          </TableColumnHeader>
+        </TableHeaders>
+        <TableRowEntries>
+          <TableRowEntry>
+            <TableColumnItems>
+              <TableColumnItem>
+                <PropertyName>LogonId</PropertyName>
+              </TableColumnItem>
+              <TableColumnItem>
+                <PropertyName>FullQualifiedUserName</PropertyName>
+              </TableColumnItem>
+              <TableColumnItem>
+                <PropertyName>LogonType</PropertyName>
+              </TableColumnItem>
+              <TableColumnItem>
+                <PropertyName>SessionId</PropertyName>
+              </TableColumnItem>
+            </TableColumnItems>
+          </TableRowEntry>
+        </TableRowEntries>
+      </TableControl>
+    </View>
+    <View>
+      <Name>AccountRightTable</Name>
+      <ViewSelectedBy>
+        <TypeName>NtApiDotNet.Win32.Security.Policy.AccountRight</TypeName>
+      </ViewSelectedBy>
+      <TableControl>
+        <TableHeaders>
+          <TableColumnHeader>
+            <Label>Name</Label>
+            <Alignment>left</Alignment>
+          </TableColumnHeader>
+          <TableColumnHeader>
+            <Label>Sids</Label>
+            <Alignment>left</Alignment>
+          </TableColumnHeader>
+        </TableHeaders>
+        <TableRowEntries>
+          <TableRowEntry>
+            <TableColumnItems>
+              <TableColumnItem>
+                <PropertyName>Name</PropertyName>
+              </TableColumnItem>
+              <TableColumnItem>
+                <ScriptBlock>[string]::Join(", ", $_.Sids.Name)</ScriptBlock>
+              </TableColumnItem>
+            </TableColumnItems>
+          </TableRowEntry>
+        </TableRowEntries>
+      </TableControl>
+    </View>
+    <View>
+      <Name>ConsoleSessionTable</Name>
+      <ViewSelectedBy>
+        <TypeName>NtApiDotNet.Win32.ConsoleSession</TypeName>
+      </ViewSelectedBy>
+      <TableControl>
+        <TableHeaders>
+          <TableColumnHeader>
+            <Label>SessionId</Label>
+            <Alignment>left</Alignment>
+          </TableColumnHeader>
+          <TableColumnHeader>
+            <Label>UserName</Label>
+            <Alignment>left</Alignment>
+          </TableColumnHeader>
+          <TableColumnHeader>
+            <Label>SessionName</Label>
+            <Alignment>left</Alignment>
+          </TableColumnHeader>
+          <TableColumnHeader>
+            <Label>State</Label>
+            <Alignment>left</Alignment>
+          </TableColumnHeader>
+        </TableHeaders>
+        <TableRowEntries>
+          <TableRowEntry>
+            <TableColumnItems>
+              <TableColumnItem>
+                <PropertyName>SessionId</PropertyName>
+              </TableColumnItem>
+              <TableColumnItem>
+                <PropertyName>FullQualifiedUserName</PropertyName>
+              </TableColumnItem>
+              <TableColumnItem>
+                <PropertyName>SessionName</PropertyName>
+              </TableColumnItem>
+              <TableColumnItem>
+                <PropertyName>State</PropertyName>
+              </TableColumnItem>
+            </TableColumnItems>
+          </TableRowEntry>
+        </TableRowEntries>
+      </TableControl>
+    </View>
+    <View>
+      <Name>LuidTable</Name>
+      <ViewSelectedBy>
+        <TypeName>NtApiDotNet.Luid</TypeName>
+      </ViewSelectedBy>
+      <TableControl>
+        <TableHeaders>
+          <TableColumnHeader>
+            <Label>LUID</Label>
+            <Alignment>left</Alignment>
+          </TableColumnHeader>
+        </TableHeaders>
+        <TableRowEntries>
+          <TableRowEntry>
+            <TableColumnItems>
+              <TableColumnItem>
+                <ScriptBlock>$_</ScriptBlock>
+              </TableColumnItem>
+            </TableColumnItems>
+          </TableRowEntry>
+        </TableRowEntries>
+      </TableControl>
+    </View>
+    <View>
+      <Name>NtlmAuthenticationTokenTable</Name>
+      <ViewSelectedBy>
+        <TypeName>NtApiDotNet.Win32.Security.Authentication.Ntlm.NtlmAuthenticationToken</TypeName>
+      </ViewSelectedBy>
+      <TableControl>
+        <TableHeaders>
+          <TableColumnHeader>
+            <Label>MessageType</Label>
+            <Alignment>left</Alignment>
+          </TableColumnHeader>
+          <TableColumnHeader>
+            <Label>Flags</Label>
+            <Alignment>left</Alignment>
+          </TableColumnHeader>
+        </TableHeaders>
+        <TableRowEntries>
+          <TableRowEntry>
+            <TableColumnItems>
+              <TableColumnItem>
+                <PropertyName>MessageType</PropertyName>
+              </TableColumnItem>
+              <TableColumnItem>
+                <PropertyName>Flags</PropertyName>
+              </TableColumnItem>
+            </TableColumnItems>
+          </TableRowEntry>
+        </TableRowEntries>
+      </TableControl>
+    </View>
+    <View>
+      <Name>KerberosAuthenticationKeyTable</Name>
+      <ViewSelectedBy>
+        <TypeName>NtApiDotNet.Win32.Security.Authentication.Kerberos.KerberosAuthenticationKey</TypeName>
+      </ViewSelectedBy>
+      <TableControl>
+        <TableHeaders>
+          <TableColumnHeader>
+            <Label>KeyEncryption</Label>
+            <Alignment>left</Alignment>
+          </TableColumnHeader>
+          <TableColumnHeader>
+            <Label>Principal</Label>
+            <Alignment>left</Alignment>
+          </TableColumnHeader>
+          <TableColumnHeader>
+            <Label>NameType</Label>
+            <Alignment>left</Alignment>
+          </TableColumnHeader>
+        </TableHeaders>
+        <TableRowEntries>
+          <TableRowEntry>
+            <TableColumnItems>
+              <TableColumnItem>
+                <PropertyName>KeyEncryption</PropertyName>
+              </TableColumnItem>
+              <TableColumnItem>
+                <PropertyName>Principal</PropertyName>
+              </TableColumnItem>
+              <TableColumnItem>
+                <PropertyName>NameType</PropertyName>
+              </TableColumnItem>
+            </TableColumnItems>
+          </TableRowEntry>
+        </TableRowEntries>
+      </TableControl>
     </View>
   </ViewDefinitions>
 </Configuration>

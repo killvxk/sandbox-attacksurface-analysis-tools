@@ -17,7 +17,10 @@
 // the original author James Forshaw to be used under the Apache License for this
 // project.
 
+using NtApiDotNet.Utilities.Memory;
 using NtApiDotNet.Win32;
+using NtApiDotNet.Win32.Debugger;
+using NtApiDotNet.Win32.Rpc;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
@@ -29,6 +32,7 @@ namespace NtApiDotNet.Ndr
 {
 #pragma warning disable 1591
     [Flags]
+    [Serializable]
     public enum NdrInterpreterOptFlags : byte
     {
         ServerMustSize = 0x01,
@@ -41,6 +45,7 @@ namespace NtApiDotNet.Ndr
     }
 
     [Flags]
+    [Serializable]
     public enum NdrInterpreterOptFlags2 : byte
     {
         HasNewCorrDesc = 0x01,
@@ -48,10 +53,10 @@ namespace NtApiDotNet.Ndr
         ServerCorrCheck = 0x04,
         HasNotify = 0x08,
         HasNotify2 = 0x10,
-        Unknown20 = 0x20,
-        ExtendedCorrDesc = 0x40,
-        Unknown80 = 0x80,
-        Valid = HasNewCorrDesc | ClientCorrCheck | ServerCorrCheck | HasNotify | HasNotify2 | ExtendedCorrDesc
+        HasComplexReturn = 0x20,
+        HasRangeOnConformance = 0x40,
+        HasBigByValParam = 0x80,
+        Valid = HasNewCorrDesc | ClientCorrCheck | ServerCorrCheck | HasNotify | HasNotify2 | HasRangeOnConformance
     }
 
 #pragma warning restore 1591
@@ -87,9 +92,10 @@ namespace NtApiDotNet.Ndr
         public ISymbolResolver SymbolResolver { get; }
         public MIDL_STUB_DESC StubDesc { get; }
         public IntPtr TypeDesc { get; }
-        public int CorrDescSize { get; }
         public IMemoryReader Reader { get; }
         public NdrParserFlags Flags { get; }
+        public NDR_EXPR_DESC ExprDesc { get; }
+        public NdrInterpreterOptFlags2 OptFlags { get; }
 
         public bool HasFlag(NdrParserFlags flags)
         {
@@ -97,14 +103,15 @@ namespace NtApiDotNet.Ndr
         }
 
         internal NdrParseContext(NdrTypeCache type_cache, ISymbolResolver symbol_resolver, 
-            MIDL_STUB_DESC stub_desc, IntPtr type_desc, int desc_size, IMemoryReader reader,
-            NdrParserFlags parser_flags)
+            MIDL_STUB_DESC stub_desc, IntPtr type_desc, NDR_EXPR_DESC expr_desc,
+            NdrInterpreterOptFlags2 opt_flags, IMemoryReader reader, NdrParserFlags parser_flags)
         {
             TypeCache = type_cache;
             SymbolResolver = symbol_resolver;
             StubDesc = stub_desc;
             TypeDesc = type_desc;
-            CorrDescSize = desc_size;
+            ExprDesc = expr_desc;
+            OptFlags = opt_flags;
             Reader = reader;
             Flags = parser_flags;
         }
@@ -124,6 +131,10 @@ namespace NtApiDotNet.Ndr
         /// Ignore processing any complex user marshal types.
         /// </summary>
         IgnoreUserMarshal = 1,
+        /// <summary>
+        /// Resolve structure names, required private symbols.
+        /// </summary>
+        ResolveStructureNames = 2,
     }
 
     /// <summary>
@@ -145,6 +156,139 @@ namespace NtApiDotNet.Ndr
                 dispatch_table.DispatchTableCount, type_cache, symbol_resolver, null, parser_flags);
             return new NdrRpcServerInterface(server_interface.InterfaceId, server_interface.TransferSyntax, procs,
                 server_interface.GetProtSeq(reader).Select(s => new NdrProtocolSequenceEndpoint(s, reader)));
+        }
+
+        private static UserDefinedTypeInformation GetUDTType(TypeInformation type_info)
+        {
+            if (type_info is PointerTypeInformation pointer_type)
+            {
+                return GetUDTType(pointer_type.PointerType);
+            }
+
+            if (type_info is ArrayTypeInformation array_type)
+            {
+                return GetUDTType(array_type.ArrayType);
+            }
+
+            return type_info as UserDefinedTypeInformation;
+        }
+
+        private static NdrComplexTypeReference GetComplexType(NdrBaseTypeReference type_reference)
+        {
+            if(type_reference is NdrPointerTypeReference pointer_type)
+            {
+                return GetComplexType(pointer_type.Type);
+            }
+
+            if (type_reference is NdrBaseArrayTypeReference array_type)
+            {
+                return GetComplexType(array_type.ElementType);
+            }
+
+            return type_reference as NdrComplexTypeReference;
+        }
+
+        private static void UpdateComplexTypes(Dictionary<NdrComplexTypeReference, UserDefinedTypeInformation> complex_types, 
+            TypeInformation type_info, NdrBaseTypeReference type_reference)
+        {
+            var udt = GetUDTType(type_info);
+            var complex = GetComplexType(type_reference);
+            if (udt != null && complex != null && !complex_types.ContainsKey(complex))
+            {
+                complex_types[complex] = udt;
+            }
+        }
+
+        private static void FixupStructureType(HashSet<NdrComplexTypeReference> fixup_set, NdrBaseStructureTypeReference complex_type, UserDefinedTypeInformation udt)
+        {
+            var members = complex_type.Members.ToList();
+            if (members.Count != udt.Members.Count)
+                return;
+            for (int i = 0; i < members.Count; ++i)
+            {
+                members[i].Name = udt.Members[i].Name;
+                var member_udt = GetUDTType(udt.Members[i].Type);
+                var member_complex = GetComplexType(members[i].MemberType);
+                if (member_udt != null && member_complex != null)
+                {
+                    FixupComplexType(fixup_set, member_complex, member_udt);
+                }
+            }
+        }
+
+        private static void FixupUnionType(HashSet<NdrComplexTypeReference> fixup_set, NdrUnionTypeReference union_type, UserDefinedTypeInformation udt)
+        {
+            var members = union_type.Arms.Arms.ToList();
+            if (members.Count != udt.Members.Count)
+                return;
+            for (int i = 0; i < members.Count; ++i)
+            {
+                members[i].Name = udt.Members[i].Name;
+                var member_udt = GetUDTType(udt.Members[i].Type);
+                var member_complex = GetComplexType(members[i].ArmType);
+                if (member_udt != null && member_complex != null)
+                {
+                    FixupComplexType(fixup_set, member_complex, member_udt);
+                }
+            }
+        }
+
+        private static void FixupComplexType(HashSet<NdrComplexTypeReference> fixup_set, NdrComplexTypeReference complex_type, UserDefinedTypeInformation udt)
+        {
+            if (!fixup_set.Add(complex_type))
+                return;
+
+            // Fixup the name to remove compiler generated characters.
+            complex_type.Name = CodeGenUtils.MakeIdentifier(udt.Name);
+            if (udt.Union)
+            {
+                if (complex_type is NdrUnionTypeReference union)
+                {
+                    FixupUnionType(fixup_set, union, udt);
+                }
+            }
+            else
+            {
+                if (complex_type is NdrBaseStructureTypeReference str)
+                {
+                    FixupStructureType(fixup_set, str, udt);
+                }
+            }
+        }
+
+        private static void FixupStructureNames(List<NdrProcedureDefinition> procs, 
+            ISymbolResolver symbol_resolver, NdrParserFlags parser_flags)
+        {
+            if (!parser_flags.HasFlagSet(NdrParserFlags.ResolveStructureNames) || !(symbol_resolver is ISymbolTypeResolver type_resolver))
+                return;
+
+            var complex_types = new Dictionary<NdrComplexTypeReference, UserDefinedTypeInformation>();
+
+            foreach (var proc in procs)
+            {
+                if (!(type_resolver.GetTypeForSymbolByAddress(proc.DispatchFunction) is FunctionTypeInformation func_type))
+                    continue;
+
+                if (func_type.Parameters.Count != proc.Params.Count)
+                    continue;
+
+                for (int i = 0; i < func_type.Parameters.Count; ++i)
+                {
+                    proc.Params[i].Name = func_type.Parameters[i].Name;
+                    UpdateComplexTypes(complex_types, func_type.Parameters[i].ParameterType, proc.Params[i].Type);
+                }
+
+                if (proc.ReturnValue != null && func_type.ReturnType != null)
+                {
+                    UpdateComplexTypes(complex_types, func_type.ReturnType, proc.ReturnValue.Type);
+                }
+            }
+
+            HashSet<NdrComplexTypeReference> fixup_set = new HashSet<NdrComplexTypeReference>();
+            foreach (var pair in complex_types)
+            {
+                FixupComplexType(fixup_set, pair.Key, pair.Value);
+            }
         }
 
         private static IEnumerable<NdrProcedureDefinition> ReadProcs(IMemoryReader reader, MIDL_SERVER_INFO server_info, int start_offset,
@@ -175,6 +319,7 @@ namespace NtApiDotNet.Ndr
             IntPtr[] dispatch_funcs = server_info.GetDispatchTable(reader, dispatch_count);
             MIDL_STUB_DESC stub_desc = server_info.GetStubDesc(reader);
             IntPtr type_desc = stub_desc.pFormatTypes;
+            NDR_EXPR_DESC expr_desc = stub_desc.GetExprDesc(reader);
             List<NdrProcedureDefinition> procs = new List<NdrProcedureDefinition>();
             if (fmt_str_ofs != IntPtr.Zero)
             {
@@ -189,11 +334,47 @@ namespace NtApiDotNet.Ndr
                             name = names[i - start_offset];
                         }
                         procs.Add(new NdrProcedureDefinition(reader, type_cache, symbol_resolver,
-                            stub_desc, proc_str + fmt_ofs, type_desc, dispatch_funcs[i], name, parser_flags));
+                            stub_desc, proc_str + fmt_ofs, type_desc, expr_desc, dispatch_funcs[i], name, parser_flags));
                     }
                 }
             }
+
+            FixupStructureNames(procs, symbol_resolver, parser_flags);
+
             return procs.AsReadOnly();
+        }
+
+        private void ReadTypes(IntPtr midl_type_pickling_info_ptr, IntPtr midl_stub_desc_ptr, bool deref_stub_desc, Func<IMemoryReader, IntPtr, IEnumerable<int>> get_offsets)
+        {
+            if (midl_type_pickling_info_ptr == IntPtr.Zero)
+            {
+                throw new ArgumentException("Must specify a MIDL_TYPE_PICKLING_INFO pointer");
+            }
+
+            if (midl_stub_desc_ptr == IntPtr.Zero)
+            {
+                throw new ArgumentException($"Must specify a {(deref_stub_desc ? "MIDL_STUBLESS_PROXY_INFO" : "MIDL_STUB_DESC")} pointer");
+            }
+
+            if (deref_stub_desc)
+            {
+                midl_stub_desc_ptr = _reader.ReadIntPtr(midl_stub_desc_ptr);
+            }
+
+            var pickle_info = _reader.ReadStruct<MIDL_TYPE_PICKLING_INFO>(midl_type_pickling_info_ptr);
+            if (pickle_info.Version != 0x33205054)
+            {
+                throw new ArgumentException($"Unsupported picking type version {pickle_info.Version:X}");
+            }
+
+            var flags = pickle_info.Flags.HasFlag(MidlTypePicklingInfoFlags.NewCorrDesc) ? NdrInterpreterOptFlags2.HasNewCorrDesc : 0;
+            MIDL_STUB_DESC stub_desc = _reader.ReadStruct<MIDL_STUB_DESC>(midl_stub_desc_ptr);
+            NdrParseContext context = new NdrParseContext(_type_cache, null, stub_desc, stub_desc.pFormatTypes, stub_desc.GetExprDesc(_reader),
+                flags, _reader, NdrParserFlags.IgnoreUserMarshal);
+            foreach (var i in get_offsets(_reader, stub_desc.pFormatTypes))
+            {
+                NdrBaseTypeReference.Read(context, i);
+            }
         }
 
         [UnmanagedFunctionPointer(CallingConvention.StdCall)]
@@ -242,7 +423,7 @@ namespace NtApiDotNet.Ndr
                 // Reference Count
                 // ProxyFileInfo*
 
-                IntPtr pInfo = Marshal.ReadIntPtr(psfactory, 2 * IntPtr.Size);
+                IntPtr pInfo = System.Runtime.InteropServices.Marshal.ReadIntPtr(psfactory, 2 * IntPtr.Size);
                 // TODO: Should add better checks here, 
                 // for example VTable should be in COMBASE and the pointer should be in the
                 // server DLL's rdata section. But this is probably good enough for now.
@@ -264,7 +445,7 @@ namespace NtApiDotNet.Ndr
             {
                 if (psfactory != IntPtr.Zero)
                 {
-                    Marshal.Release(psfactory);
+                    System.Runtime.InteropServices.Marshal.Release(psfactory);
                 }
             }
         }
@@ -350,6 +531,16 @@ namespace NtApiDotNet.Ndr
             }
         }
 
+        private static void RunWithAccessCatch(Action func)
+        {
+            RunWithAccessCatch(() =>
+            {
+                func();
+                return 0;
+            }
+            );
+        }
+
         private static IMemoryReader CreateReader(NtProcess process)
         {
             if (process == null || process.ProcessId == NtProcess.Current.ProcessId)
@@ -358,20 +549,21 @@ namespace NtApiDotNet.Ndr
             }
             else
             {
-                if (!Environment.Is64BitProcess && process.Is64Bit)
-                {
-                    throw new ArgumentException("Do not support 32 to 64 bit reading.");
-                }
-
-                if (Environment.Is64BitProcess != process.Is64Bit)
-                {
-                    return new CrossBitnessProcessMemoryReader(process);
-                }
-                else
-                {
-                    return new ProcessMemoryReader(process);
-                }
+                return ProcessMemoryReader.Create(process);
             }
+        }
+
+        private static IEnumerable<NdrComplexTypeReference> ReadPicklingComplexTypes(NdrParserFlags parser_flags, NtProcess process, IntPtr midl_type_pickling_info, IntPtr midl_stub_desc, bool deref_stub_desc, Func<IMemoryReader, IntPtr, IEnumerable<int>> get_offsets)
+        {
+            NdrParser parser = new NdrParser(process, null, parser_flags);
+            RunWithAccessCatch(() => parser.ReadTypes(midl_type_pickling_info, midl_stub_desc, deref_stub_desc, get_offsets));
+            return parser.ComplexTypes;
+        }
+
+        private static IEnumerable<int> GetPicklingTableOffsets(IMemoryReader reader, IntPtr type_pickling_offset_table, IEnumerable<int> type_index)
+        {
+            var table = reader.ReadIntPtr(type_pickling_offset_table);
+            return type_index.Select(i => reader.ReadInt32(table + i * 4));
         }
 
         #endregion
@@ -607,6 +799,106 @@ namespace NtApiDotNet.Ndr
         /// List of parsed complex types from the NDR.
         /// </summary>
         public IEnumerable<NdrComplexTypeReference> ComplexTypes { get { return Types.OfType<NdrComplexTypeReference>(); } }
+
+        #endregion
+
+        #region Static Methods
+
+        /// <summary>
+        /// Parse NDR complex type information from a pickling structure. Used to extract explicit Encode/Decode method information.
+        /// </summary>
+        /// <param name="process">The process to read from.</param>
+        /// <param name="midl_type_pickling_info">Pointer to the MIDL_TYPE_PICKLING_INFO structure.</param>
+        /// <param name="midl_stub_desc">The pointer to the MIDL_STUB_DESC structure.</param>
+        /// <param name="type_offsets">Pointers to the the format string to the start of the types.</param>
+        /// <param name="parser_flags">Specify additional parser flags.</param>
+        /// <returns>The list of complex types.</returns>
+        /// <remarks>This function is used to extract type information for calls to NdrMesTypeDecode2. MIDL_TYPE_PICKLING_INFO is the second parameter,
+        /// MIDL_STUB_DESC is the third, the Type Offsets is the fourth parameter.</remarks>
+        public static IEnumerable<NdrComplexTypeReference> ReadPicklingComplexTypes(NtProcess process, IntPtr midl_type_pickling_info, IntPtr midl_stub_desc, IntPtr[] type_offsets, NdrParserFlags parser_flags)
+        {
+            if (type_offsets.Length == 0)
+            {
+                return new NdrComplexTypeReference[0];
+            }
+
+            return ReadPicklingComplexTypes(parser_flags, process, midl_type_pickling_info, midl_stub_desc, false, (r, f) => type_offsets.Select(p => (int)(p.ToInt64() - f.ToInt64())));
+        }
+
+        /// <summary>
+        /// Parse NDR complex type information from a pickling structure. Used to extract explicit Encode/Decode method information.
+        /// </summary>
+        /// <param name="process">The process to read from.</param>
+        /// <param name="midl_type_pickling_info">Pointer to the MIDL_TYPE_PICKLING_INFO structure.</param>
+        /// <param name="midl_stubless_proxy">The pointer to the MIDL_STUBLESS_PROXY_INFO structure.</param>
+        /// <param name="type_pickling_offset_table">Pointer to the type pickling offset table.</param>
+        /// <param name="type_index">Index into type_pickling_offset_table array.</param>
+        /// <param name="parser_flags">Specify additional parser flags.</param>
+        /// <returns>The list of complex types.</returns>
+        /// <remarks>This function is used to extract type information for calls to NdrMesTypeDecode3. MIDL_TYPE_PICKLING_INFO is the second parameter,
+        /// MIDL_STUBLESS_PROXY_INFO is the third, the type pickling offset table is the fourth and the type index is the fifth.</remarks>
+        public static IEnumerable<NdrComplexTypeReference> ReadPicklingComplexTypes(NtProcess process, IntPtr midl_type_pickling_info, 
+            IntPtr midl_stubless_proxy, IntPtr type_pickling_offset_table, int[] type_index, NdrParserFlags parser_flags)
+        {
+            if (type_index.Length == 0)
+            {
+                return new NdrComplexTypeReference[0];
+            }
+
+            return ReadPicklingComplexTypes(parser_flags, process, midl_type_pickling_info, midl_stubless_proxy, true, (r, f) => GetPicklingTableOffsets(r, type_pickling_offset_table, type_index));
+        }
+
+        /// <summary>
+        /// Parse NDR complex type information from a pickling structure. Used to extract explicit Encode/Decode method information.
+        /// </summary>
+        /// <param name="process">The process to read from.</param>
+        /// <param name="midl_type_pickling_info">Pointer to the MIDL_TYPE_PICKLING_INFO structure.</param>
+        /// <param name="midl_stub_desc">The pointer to the MIDL_STUB_DESC structure.</param>
+        /// <param name="start_offsets">Offsets into the format string to the start of the types.</param>
+        /// <param name="parser_flags">Specify additional parser flags.</param>
+        /// <returns>The list of complex types.</returns>
+        /// <remarks>This function is used to extract type information for calls to NdrMesTypeDecode2. MIDL_TYPE_PICKLING_INFO is the second parameter,
+        /// MIDL_STUB_DESC is the third (minus the offset).</remarks>
+        public static IEnumerable<NdrComplexTypeReference> ReadPicklingComplexTypes(NtProcess process, 
+            IntPtr midl_type_pickling_info, IntPtr midl_stub_desc, int[] start_offsets, NdrParserFlags parser_flags)
+        {
+            if (start_offsets.Length == 0)
+            {
+                return new NdrComplexTypeReference[0];
+            }
+
+            return ReadPicklingComplexTypes(parser_flags, process, midl_type_pickling_info, midl_stub_desc, false, (r, f) => start_offsets);
+        }
+
+        /// <summary>
+        /// Parse NDR complex type information from a pickling structure. Used to extract explicit Encode/Decode method information.
+        /// </summary>
+        /// <param name="process">The process to read from.</param>
+        /// <param name="midl_type_pickling_info">Pointer to the MIDL_TYPE_PICKLING_INFO structure.</param>
+        /// <param name="midl_stub_desc">The pointer to the MIDL_STUB_DESC structure.</param>
+        /// <param name="start_offsets">Offsets into the format string to the start of the types.</param>
+        /// <returns>The list of complex types.</returns>
+        /// <remarks>This function is used to extract type information for calls to NdrMesTypeDecode2. MIDL_TYPE_PICKLING_INFO is the second parameter,
+        /// MIDL_STUB_DESC is the third (minus the offset).</remarks>
+        public static IEnumerable<NdrComplexTypeReference> ReadPicklingComplexTypes(NtProcess process, IntPtr midl_type_pickling_info, 
+            IntPtr midl_stub_desc, params int[] start_offsets)
+        {
+            return ReadPicklingComplexTypes(process, midl_type_pickling_info, midl_stub_desc, start_offsets, NdrParserFlags.IgnoreUserMarshal);
+        }
+
+        /// <summary>
+        /// Parse NDR complex type information from a pickling structure. Used to extract explicit Encode/Decode method information.
+        /// </summary>
+        /// <param name="midl_type_pickling_info">Pointer to the MIDL_TYPE_PICKLING_INFO structure.</param>
+        /// <param name="midl_stub_desc">The pointer to the MIDL_STUB_DESC structure.</param>
+        /// <param name="start_offsets">Offsets into the format string to the start of the types.</param>
+        /// <returns>The list of complex types.</returns>
+        /// <remarks>This function is used to extract type information for calls to NdrMesTypeDecode2. MIDL_TYPE_PICKLING_INFO is the second parameter,
+        /// MIDL_STUB_DESC is the third (minus the offset).</remarks>
+        public static IEnumerable<NdrComplexTypeReference> ReadPicklingComplexTypes(IntPtr midl_type_pickling_info, IntPtr midl_stub_desc, params int[] start_offsets)
+        {
+            return ReadPicklingComplexTypes(null, midl_type_pickling_info, midl_stub_desc, start_offsets);
+        }
 
         #endregion
     }

@@ -79,7 +79,7 @@ namespace TokenViewer
         static void ShowHelp(OptionSet p)
         {
             StringBuilder builder = new StringBuilder();
-            builder.AppendLine("Usage: ObjectList [options] path1 [path2..pathN]");
+            builder.AppendLine("Usage: TokenViewer [options]");
             builder.AppendLine();
             builder.AppendLine("Options:");
             StringWriter writer = new StringWriter();
@@ -94,7 +94,7 @@ namespace TokenViewer
             {
                 int pid = -1;
                 int handle = -1;
-                string text = String.Empty;
+                string text = string.Empty;
                 bool show_help = false;
 
                 OptionSet opts = new OptionSet() {
@@ -116,22 +116,25 @@ namespace TokenViewer
                 }
                 else if (handle > 0)
                 {
-                    using (NtToken token = NtToken.FromHandle(new SafeKernelObjectHandle(new IntPtr(handle), true)))
+                    using (var obj = NtObjectUtils.FromHandle(new IntPtr(handle), true))
                     {
-                        if (token.NtType != NtType.GetTypeByType<NtToken>())
+                        if (obj is NtToken token)
                         {
-                            throw new ArgumentException("Passed handle is not a token");
+                            return new TokenForm(token.Duplicate(), text);
                         }
-
-                        return new TokenForm(token.Duplicate(), text);
+                        else if (obj is NtProcess process)
+                        {
+                            return new TokenForm(new ProcessTokenEntry(process), text, false);
+                        }
+                        throw new ArgumentException("Passed handle is not a token or process.");
                     }
                 }
                 else if (pid > 0)
                 {
                     using (NtProcess process = NtProcess.Open(pid, ProcessAccessRights.QueryLimitedInformation))
                     {
-                        return new TokenForm(process.OpenToken(),
-                            $"{process.Name}:{pid}");
+                        return new TokenForm(new ProcessTokenEntry(process),
+                            $"{process.Name}:{pid}", false);
                     }
                 }
             }

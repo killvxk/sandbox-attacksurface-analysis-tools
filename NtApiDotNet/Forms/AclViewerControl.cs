@@ -19,6 +19,7 @@
 
 using NtApiDotNet.Win32;
 using System;
+using System.Collections.Generic;
 using System.Drawing;
 using System.Linq;
 using System.Runtime.InteropServices;
@@ -35,7 +36,9 @@ namespace NtApiDotNet.Forms
         private Type _access_type;
         private GenericMapping _mapping;
         private AccessMask _valid_access;
+        private bool _is_container;
         private Type _current_access_type;
+        private bool _generic_access_mask;
         private bool _read_only_checks;
 
         /// <summary>
@@ -55,15 +58,104 @@ namespace NtApiDotNet.Forms
         /// <param name="valid_access">The valid bit mask for access for this type.</param>
         public void SetAcl(Acl acl, Type access_type, GenericMapping mapping, AccessMask valid_access)
         {
+            SetAcl(acl, access_type, mapping, valid_access, false);
+        }
+
+        /// <summary>
+        /// Set ACL for control.
+        /// </summary>
+        /// <param name="acl">The ACL to view.</param>
+        /// <param name="access_type">The enum type for the view.</param>
+        /// <param name="mapping">Generic mapping for the type.</param>
+        /// <param name="valid_access">The valid bit mask for access for this type.</param>
+        /// <param name="is_container">True to indicate this object is a container.</param>
+        public void SetAcl(Acl acl, Type access_type, GenericMapping mapping, AccessMask valid_access, bool is_container)
+        {
             _acl = acl;
             _access_type = access_type;
             _mapping = mapping;
             _valid_access = valid_access;
+            _is_container = is_container;
 
-            if (!acl.HasConditionalAce)
+            bool has_conditional_ace = false;
+            bool has_inherited_object_ace = false;
+            bool has_object_ace = false;
+
+            List<string> flags = new List<string>();
+            if (acl.Defaulted)
+            {
+                flags.Add("Defaulted");
+            }
+            if (acl.Protected)
+            {
+                flags.Add("Protected");
+            }
+            if (acl.AutoInherited)
+            {
+                flags.Add("AutoInherited");
+            }
+            if (acl.AutoInheritReq)
+            {
+                flags.Add("AutoInheritReq");
+            }
+
+            if (flags.Count > 0)
+            {
+                lblFlags.Text = $"Flags: {string.Join(", ", flags)}";
+            }
+            else
+            {
+                lblFlags.Text = "Flags: None";
+            }
+
+            if (acl.NullAcl)
+            {
+                lblFlags.Text += Environment.NewLine + "NULL ACL";
+                listViewAcl.Visible = false;
+                listViewAccess.Visible = false;
+                groupBoxAclEntries.Visible = false;
+                groupBoxAccess.Visible = false;
+                return;
+            }
+
+            listViewAcl.Visible = true;
+            listViewAccess.Visible = true;
+            groupBoxAclEntries.Visible = true;
+            groupBoxAccess.Visible = true;
+
+            foreach (var ace in acl)
+            {
+                if (ace.IsConditionalAce)
+                {
+                    has_conditional_ace = true;
+                }
+                if (ace.IsObjectAce)
+                {
+                    if (ace.ObjectType.HasValue)
+                    {
+                        has_object_ace = true;
+                    }
+                    if (ace.InheritedObjectType.HasValue)
+                    {
+                        has_inherited_object_ace = true;
+                    }
+                }
+            }
+
+            if (!has_conditional_ace)
             {
                 listViewAcl.Columns.Remove(columnHeaderCondition);
                 copyConditionToolStripMenuItem.Visible = false;
+            }
+
+            if (!has_object_ace)
+            {
+                listViewAcl.Columns.Remove(columnHeaderObject);
+            }
+
+            if (!has_inherited_object_ace)
+            {
+                listViewAcl.Columns.Remove(columnHeaderInheritedObject);
             }
 
             foreach (var ace in acl)
@@ -75,6 +167,10 @@ namespace NtApiDotNet.Forms
                 {
                     access = ace.Mask.ToMandatoryLabelPolicy().ToString();
                 }
+                else if (ace.Flags.HasFlagSet(AceFlags.InheritOnly))
+                {
+                    access = ace.Mask.ToSpecificAccess(access_type).ToString();
+                }
                 else
                 {
                     AccessMask mapped_mask = mapping.MapMask(ace.Mask);
@@ -84,9 +180,19 @@ namespace NtApiDotNet.Forms
 
                 item.SubItems.Add(access);
                 item.SubItems.Add(ace.Flags.ToString());
-                if (ace.IsConditionalAce)
+                if (has_conditional_ace)
                 {
                     item.SubItems.Add(ace.Condition);
+                }
+
+                if (has_object_ace)
+                {
+                    item.SubItems.Add(ace.ObjectType?.ToString() ?? string.Empty);
+                }
+
+                if (has_inherited_object_ace)
+                {
+                    item.SubItems.Add(ace.InheritedObjectType?.ToString() ?? string.Empty);
                 }
 
                 item.Tag = ace;
@@ -110,6 +216,12 @@ namespace NtApiDotNet.Forms
                         break;
                     case AceType.MandatoryLabel:
                         item.BackColor = Color.LightGoldenrodYellow;
+                        break;
+                    case AceType.Audit:
+                    case AceType.AuditCallback:
+                    case AceType.AuditCallbackObject:
+                    case AceType.AuditObject:
+                        item.BackColor = Color.LightCoral;
                         break;
                 }
             }
@@ -141,6 +253,7 @@ namespace NtApiDotNet.Forms
             Type access_type = _access_type;
             AccessMask valid_access = _valid_access;
             AccessMask mapped_mask = _mapping.MapMask(ace.Mask) & _valid_access;
+            bool generic_access_mask = false;
 
             if (ace.Type == AceType.MandatoryLabel)
             {
@@ -148,11 +261,24 @@ namespace NtApiDotNet.Forms
                 access_type = typeof(MandatoryLabelPolicy);
                 valid_access = 0x7;
             }
-
-            if (access_type != _current_access_type)
+            else if (ace.Flags.HasFlagSet(AceFlags.InheritOnly))
             {
+                mapped_mask = ace.Mask;
+                generic_access_mask = true;
+                valid_access = valid_access 
+                    | GenericAccessRights.GenericRead 
+                    | GenericAccessRights.GenericWrite 
+                    | GenericAccessRights.GenericExecute 
+                    | GenericAccessRights.GenericAll;
+            }
+
+            if (access_type != _current_access_type || generic_access_mask != _generic_access_mask)
+            {
+                _generic_access_mask = generic_access_mask;
                 _current_access_type = access_type;
-                ListViewItem[] items = Win32Utils.GetMaskDictionary(access_type, valid_access).Select(pair =>
+                var masks = Win32Utils.GetMaskDictionary(access_type, valid_access);
+                var ordered = generic_access_mask ? masks.OrderByDescending(p => p.Key) : masks.OrderBy(p => p.Key);
+                ListViewItem[] items = ordered.Select(pair =>
                     {
                         ListViewItem item = new ListViewItem(pair.Value);
                         item.SubItems.Add($"0x{pair.Key:X08}");

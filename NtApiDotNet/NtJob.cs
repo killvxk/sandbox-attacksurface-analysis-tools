@@ -13,237 +13,39 @@
 //  limitations under the License.
 
 using System;
+using System.Collections.Generic;
+using System.Linq;
 using System.Runtime.InteropServices;
 
 namespace NtApiDotNet
 {
-#pragma warning disable 1591
-    [Flags]
-    public enum JobAccessRights : uint
-    {
-        None = 0,
-        AssignProcess = 0x1,
-        SetAttributes = 0x2,
-        Query = 0x4,
-        Terminate = 0x8,
-        SetSecurityAttributes = 0x10,
-        Impersonate = 0x20,
-        GenericRead = GenericAccessRights.GenericRead,
-        GenericWrite = GenericAccessRights.GenericWrite,
-        GenericExecute = GenericAccessRights.GenericExecute,
-        GenericAll = GenericAccessRights.GenericAll,
-        Delete = GenericAccessRights.Delete,
-        ReadControl = GenericAccessRights.ReadControl,
-        WriteDac = GenericAccessRights.WriteDac,
-        WriteOwner = GenericAccessRights.WriteOwner,
-        Synchronize = GenericAccessRights.Synchronize,
-        MaximumAllowed = GenericAccessRights.MaximumAllowed,
-        AccessSystemSecurity = GenericAccessRights.AccessSystemSecurity
-    }
-
-    public enum JobObjectInformationClass
-    {
-        JobObjectBasicAccountingInformation = 1,
-        JobObjectBasicLimitInformation,
-        JobObjectBasicProcessIdList,
-        JobObjectBasicUIRestrictions,
-        JobObjectSecurityLimitInformation,
-        JobObjectEndOfJobTimeInformation,
-        JobObjectAssociateCompletionPortInformation,
-        JobObjectBasicAndIoAccountingInformation,
-        JobObjectExtendedLimitInformation,
-        JobObjectJobSetInformation,
-        JobObjectGroupInformation,
-        JobObjectNotificationLimitInformation,
-        JobObjectLimitViolationInformation,
-        JobObjectGroupInformationEx,
-        JobObjectCpuRateControlInformation,
-        JobObjectCompletionFilter,
-        JobObjectCompletionCounter,
-        JobObjectFreezeInformation,
-        JobObjectExtendedAccountingInformation,
-        JobObjectWakeInformation,
-        JobObjectBackgroundInformation,
-        JobObjectSchedulingRankBiasInformation,
-        JobObjectTimerVirtualizationInformation,
-        JobObjectCycleTimeNotification,
-        JobObjectClearEvent,
-        JobObjectInterferenceInformation,
-        JobObjectClearPeakJobMemoryUsed,
-        JobObjectMemoryUsageInformation,
-        JobObjectSharedCommit,
-        JobObjectContainerId,
-        JobObjectIoRateControlInformation,
-        JobObjectNetRateControlInformation,
-        JobObjectNotificationLimitInformation2,
-        JobObjectLimitViolationInformation2,
-        JobObjectCreateSilo,
-        JobObjectSiloBasicInformation,
-        JobObjectSiloRootDirectory,
-        JobObjectServerSiloBasicInformation,
-        JobObjectServerSiloUserSharedData,
-        JobObjectServerSiloInitialize,
-        JobObjectServerSiloRunningState,
-        JobObjectIoAttribution,
-        JobObjectMemoryPartitionInformation,
-        JobObjectContainerTelemetryId,
-        JobObjectSiloSystemRoot,
-        JobObjectEnergyTrackingState,
-        JobObjectThreadImpersonationInformation,
-    }
-
-    public enum JobObjectCompletionPortMessages
-    {
-        EndOfJobTime         = 1,
-        EndOfProcessTime     = 2,
-        ActiveProcessLimit    = 3,
-        ActiveProcessZero     = 4,
-        Unknown5              = 5,
-        NewProcess             = 6,
-        ExitProcess            = 7,
-        AbnormalExitProcess   = 8,
-        ProcessMemoryLimit    = 9,
-        JobMemoryLimit        = 10,
-        NotificationLimit      = 11,
-        JobCycleTimeLimit    = 12,
-        SiloTerminated         = 13,
-        MaxMessage = 14,
-    }
-
-    [Flags]
-    public enum JobObjectCompletionPortMessageFilters
-    {
-        None = 0,
-        EndOfJobTime = 1 << JobObjectCompletionPortMessages.EndOfJobTime,
-        EndOfProcessTime = 1 << JobObjectCompletionPortMessages.EndOfProcessTime,
-        ActiveProcessLimit = 1 << JobObjectCompletionPortMessages.ActiveProcessLimit,
-        ActiveProcessZero = 1 << JobObjectCompletionPortMessages.ActiveProcessZero,
-        Unknown5 = 1 << JobObjectCompletionPortMessages.Unknown5,
-        NewProcess = 1 << JobObjectCompletionPortMessages.NewProcess,
-        ExitProcess = 1 << JobObjectCompletionPortMessages.ExitProcess,
-        AbnormalExitProcess = 1 << JobObjectCompletionPortMessages.AbnormalExitProcess,
-        ProcessMemoryLimit = 1 << JobObjectCompletionPortMessages.ProcessMemoryLimit,
-        JobMemoryLimit = 1 << JobObjectCompletionPortMessages.JobMemoryLimit,
-        NotificationLimit = 1 << JobObjectCompletionPortMessages.NotificationLimit,
-        JobCycleTimeLimit = 1 << JobObjectCompletionPortMessages.JobCycleTimeLimit,
-        SiloTerminated = 1 << JobObjectCompletionPortMessages.SiloTerminated,
-        MaxMessage = 1 << JobObjectCompletionPortMessages.MaxMessage
-    }
-
-    [StructLayout(LayoutKind.Sequential)]
-    public struct JobObjectAssociateCompletionPort
-    {
-        public IntPtr CompletionKey;
-        public IntPtr CompletionPort;
-    }
-
-    [Flags]
-    public enum JobObjectLimitFlags
-    {
-        None = 0,
-        WorkingSet = 0x00000001,
-        ProcessTime = 0x00000002,
-        JobTime= 0x00000004,
-        ActiveProcess = 0x00000008,
-        Affinity = 0x00000010,
-        PriorityClass = 0x00000020,
-        PreserveJobTime = 0x00000040,
-        SchedulingClass = 0x00000080,
-        ProcessMemory = 0x00000100,
-        JobMemory = 0x00000200,
-        DieOnUnhandledException = 0x00000400,
-        BreakawayOk = 0x00000800,
-        SilentBreakawayOk = 0x00001000,
-        KillOnJobClose = 0x00002000,
-        SubsetAffinity = 0x00004000,
-        JobMemoryLow = 0x00008000,
-        Application = 0x00400000
-    }
-
-    [StructLayout(LayoutKind.Sequential)]
-    public struct JobObjectBasicLimitInformation
-    {
-        public LargeIntegerStruct PerProcessUserTimeLimit;
-        public LargeIntegerStruct PerJobUserTimeLimit;
-        public JobObjectLimitFlags LimitFlags;
-        public IntPtr MinimumWorkingSetSize;
-        public IntPtr MaximumWorkingSetSize;
-        public int ActiveProcessLimit;
-        public IntPtr Affinity;
-        public int PriorityClass;
-        public int SchedulingClass;
-    }
-
-    [StructLayout(LayoutKind.Sequential)]
-    public struct IoCounters
-    {
-        public ulong ReadOperationCount;
-        public ulong WriteOperationCount;
-        public ulong OtherOperationCount;
-        public ulong ReadTransferCount;
-        public ulong WriteTransferCount;
-        public ulong OtherTransferCount;
-    } 
-
-    [StructLayout(LayoutKind.Sequential)]
-    public struct JobObjectExtendedLimitInformation
-    {
-        public JobObjectBasicLimitInformation BasicLimitInformation;
-        public IoCounters IoInfo;
-        public IntPtr ProcessMemoryLimit;
-        public IntPtr JobMemoryLimit;
-        public IntPtr PeakProcessMemoryUsed;
-        public IntPtr PeakJobMemoryUsed;
-    }
-
-    [StructLayout(LayoutKind.Sequential)]
-    public struct JobObjectExtendedExtendedLimitInformation
-    {
-        public JobObjectExtendedLimitInformation ExtendedLimitInformation;
-        public int Unknown1;
-        public int Unknown2;
-    }
-
-    public static partial class NtSystemCalls
-    {
-        [DllImport("ntdll.dll")]
-        public static extern NtStatus NtCreateJobObject(out SafeKernelObjectHandle JobHandle, JobAccessRights DesiredAccess, [In] ObjectAttributes ObjectAttributes);
-
-        [DllImport("ntdll.dll")]
-        public static extern NtStatus NtOpenJobObject(out SafeKernelObjectHandle JobHandle, JobAccessRights DesiredAccess, [In] ObjectAttributes ObjectAttributes);
-
-        [DllImport("ntdll.dll")]
-        public static extern NtStatus NtAssignProcessToJobObject(SafeKernelObjectHandle JobHandle, SafeKernelObjectHandle ProcessHandle);
-
-        [DllImport("ntdll.dll")]
-        public static extern NtStatus NtTerminateJobObject(SafeKernelObjectHandle JobHandle, NtStatus ExitStatus);
-
-        [DllImport("ntdll.dll")]
-        public static extern NtStatus NtQueryInformationJobObject(SafeKernelObjectHandle JobHandle, JobObjectInformationClass JobInfoClass, 
-            SafeBuffer JobInformation, int JobInformationLength, out int ReturnLength);
-
-        [DllImport("ntdll.dll")]
-        public static extern NtStatus NtSetInformationJobObject(SafeKernelObjectHandle JobHandle, JobObjectInformationClass JobInfoClass, 
-            SafeBuffer JobInformation, int JobInformationLength);
-
-        [DllImport("ntdll.dll")]
-        public static extern NtStatus NtIsProcessInJob(
-            SafeKernelObjectHandle ProcessHandle,
-            SafeKernelObjectHandle JobHandle
-        );
-    }
-#pragma warning restore 1591
-
     /// <summary>
     /// Class representing a NT Job object
     /// </summary>
     [NtType("Job")]
-    public class NtJob : NtObjectWithDuplicate<NtJob, JobAccessRights>
+    public class NtJob : NtObjectWithDuplicateAndInfo<NtJob, JobAccessRights, JobObjectInformationClass, JobObjectInformationClass>
     {
+        #region Constructors
         internal NtJob(SafeKernelObjectHandle handle) : base(handle)
         {
         }
 
+        internal sealed class NtTypeFactoryImpl : NtTypeFactoryImplBase
+        {
+            public NtTypeFactoryImpl() : base(true)
+            {
+            }
+
+            protected override sealed NtResult<NtJob> OpenInternal(ObjectAttributes obj_attributes,
+                JobAccessRights desired_access, bool throw_on_error)
+            {
+                return NtJob.Open(obj_attributes, desired_access, throw_on_error);
+            }
+        }
+
+        #endregion
+
+        #region Static Methods
         /// <summary>
         /// Create a job object
         /// </summary>
@@ -253,8 +55,8 @@ namespace NtApiDotNet
         /// <returns>The NT status code and object result.</returns>
         public static NtResult<NtJob> Create(ObjectAttributes object_attributes, JobAccessRights desired_access, bool throw_on_error)
         {
-            SafeKernelObjectHandle handle;
-            return NtSystemCalls.NtCreateJobObject(out handle, desired_access, object_attributes).CreateResult(throw_on_error, () => new NtJob(handle));
+            return NtSystemCalls.NtCreateJobObject(out SafeKernelObjectHandle handle, desired_access, object_attributes)
+                .CreateResult(throw_on_error, () => new NtJob(handle));
         }
 
         /// <summary>
@@ -304,15 +106,6 @@ namespace NtApiDotNet
         }
 
         /// <summary>
-        /// Convert Job object into a Silo
-        /// </summary>
-        public void CreateSilo()
-        {
-            NtSystemCalls.NtSetInformationJobObject(Handle, JobObjectInformationClass.JobObjectCreateSilo, 
-                SafeHGlobalBuffer.Null, 0).ToNtException();
-        }
-
-        /// <summary>
         /// Open a job object
         /// </summary>
         /// <param name="object_attributes">The object attributes</param>
@@ -323,11 +116,6 @@ namespace NtApiDotNet
         {
             SafeKernelObjectHandle handle;
             return NtSystemCalls.NtOpenJobObject(out handle, desired_access, object_attributes).CreateResult(throw_on_error, () => new NtJob(handle));
-        }
-
-        internal static NtResult<NtObject> FromName(ObjectAttributes object_attributes, AccessMask desired_access, bool throw_on_error)
-        {
-            return Open(object_attributes, desired_access.ToSpecificAccess<JobAccessRights>(), throw_on_error).Cast<NtObject>();
         }
 
         /// <summary>
@@ -368,12 +156,223 @@ namespace NtApiDotNet
         }
 
         /// <summary>
+        /// Create and initialize a Silo,
+        /// </summary>
+        /// <param name="root_dir_flags">Flags for root directory.</param>
+        /// <param name="throw_on_error">True to throw on error.</param>
+        /// <returns>The Job object.</returns>
+        public static NtResult<NtJob> CreateSilo(SiloObjectRootDirectoryControlFlags root_dir_flags, bool throw_on_error)
+        {
+            using (var job = Create(null, JobAccessRights.MaximumAllowed, throw_on_error))
+            {
+                if (!job.IsSuccess)
+                    return job;
+                return job.Result.InitializeSilo(root_dir_flags, false).CreateResult(throw_on_error, () => job.Result.Duplicate());
+            }
+        }
+
+        /// <summary>
+        /// Create an initialize a Silo,
+        /// </summary>
+        /// <param name="root_dir_flags">Flags for root directory.</param>
+        /// <returns>The Job object.</returns>
+        public static NtJob CreateSilo(SiloObjectRootDirectoryControlFlags root_dir_flags)
+        {
+            return CreateSilo(root_dir_flags, true).Result;
+        }
+
+        /// <summary>
+        /// Create and initialize a Server Silo,
+        /// </summary>
+        /// <param name="root_dir_flags">Flags for root directory.</param>
+        /// <param name="throw_on_error">True to throw on error.</param>
+        /// <param name="system_root">Path to the system root.</param>
+        /// <param name="delete_event">Event to signal when silo deleted.</param>
+        /// <param name="downlevel_container">True if a downlevel container.</param>
+        /// <returns>The Job object.</returns>
+        public static NtResult<NtJob> CreateServerSilo(SiloObjectRootDirectoryControlFlags root_dir_flags, string system_root, NtEvent delete_event, bool downlevel_container, bool throw_on_error)
+        {
+            using (var job = CreateSilo(root_dir_flags, throw_on_error))
+            {
+                if (!job.IsSuccess)
+                    return job;
+
+                NtStatus status = job.Result.SetSiloSystemRoot(system_root, throw_on_error);
+                if (!status.IsSuccess())
+                    return status.CreateResultFromError<NtJob>(throw_on_error);
+
+                var silo_dir = job.Result.QuerySiloRootDirectory(throw_on_error);
+                if (!silo_dir.IsSuccess)
+                    return silo_dir.Cast<NtJob>();
+
+                string device_path = $@"{silo_dir.Result}\Device";
+
+                using (var device_dir = NtDirectory.Open(@"\Device", null, DirectoryAccessRights.MaximumAllowed, throw_on_error))
+                {
+                    if (!device_dir.IsSuccess)
+                        return device_dir.Cast<NtJob>();
+                    using (var obja = new ObjectAttributes(device_path, AttributeFlags.CaseInsensitive | AttributeFlags.Permanent | AttributeFlags.OpenIf))
+                    {
+                        using (var dir = NtDirectory.Create(obja, DirectoryAccessRights.MaximumAllowed, device_dir.Result, throw_on_error))
+                        {
+                            if (!dir.IsSuccess)
+                                return dir.Cast<NtJob>();
+                        }
+                    }
+                }
+
+                status = job.Result.InitializeServerSilo(delete_event, downlevel_container, throw_on_error);
+                if (!status.IsSuccess())
+                    return status.CreateResultFromError<NtJob>(throw_on_error);
+                return job.Result.Duplicate().CreateResult();
+            }
+        }
+
+        /// <summary>
+        /// Create and initialize a Server Silo,
+        /// </summary>
+        /// <param name="root_dir_flags">Flags for root directory.</param>
+        /// <param name="system_root">Path to the system root.</param>
+        /// <param name="delete_event">Event to signal when silo deleted.</param>
+        /// <param name="downlevel_container">True if a downlevel container.</param>
+        /// <returns>The Job object.</returns>
+        public static NtJob CreateServerSilo(SiloObjectRootDirectoryControlFlags root_dir_flags, string system_root, NtEvent delete_event, bool downlevel_container)
+        {
+            return CreateServerSilo(root_dir_flags, system_root, delete_event, downlevel_container, true).Result;
+        }
+
+        #endregion
+
+        #region Public Methods
+        /// <summary>
+        /// Convert Job object into a Silo
+        /// </summary>
+        /// <param name="throw_on_error">True to throw on error.</param>
+        /// <returns>The NT status code.</returns>
+        public NtStatus CreateSilo(bool throw_on_error)
+        {
+            return NtSystemCalls.NtSetInformationJobObject(Handle, JobObjectInformationClass.JobObjectCreateSilo,
+                SafeHGlobalBuffer.Null, 0).ToNtException(throw_on_error);
+        }
+
+        /// <summary>
+        /// Convert Job object into a Silo
+        /// </summary>
+        public void CreateSilo()
+        {
+            CreateSilo(true);
+        }
+
+        /// <summary>
+        /// Initialize a Silo,
+        /// </summary>
+        /// <param name="root_dir_flags">Flags for root directory.</param>
+        /// <param name="throw_on_error">True to throw on error.</param>
+        /// <returns>The NT status code.</returns>
+        public NtStatus InitializeSilo(SiloObjectRootDirectoryControlFlags root_dir_flags, bool throw_on_error)
+        {
+            NtStatus status = SetLimitFlags(JobObjectLimitFlags.Application, throw_on_error);
+            if (!status.IsSuccess())
+                return status;
+            status = CreateSilo(throw_on_error);
+            if (!status.IsSuccess())
+                return status;
+            status = AssignProcessPseudoHandle(throw_on_error);
+            if (!status.IsSuccess())
+                return status;
+            return SetSiloObjectRootDirectory(root_dir_flags, throw_on_error);
+        }
+
+        /// <summary>
+        /// Initialize a Silo,
+        /// </summary>
+        /// <param name="root_dir_flags">Flags for root directory.</param>
+        public void InitializeSilo(SiloObjectRootDirectoryControlFlags root_dir_flags)
+        {
+            InitializeSilo(root_dir_flags, true);
+        }
+
+        /// <summary>
+        /// Initialize a Silo to a Server Silo.
+        /// </summary>
+        /// <param name="delete_event">Event to signal when silo deleted.</param>
+        /// <param name="downlevel_container">True if a downlevel container.</param>
+        /// <param name="throw_on_error">True to throw on error.</param>
+        /// <returns>The NT status code.</returns>
+        /// <remarks>You must have set a system root and added a \Device directory (which shadows the real directory) to the silo object directory.</remarks>
+        public NtStatus InitializeServerSilo(NtEvent delete_event, bool downlevel_container, bool throw_on_error)
+        {
+            ServerSiloInitInformation init = new ServerSiloInitInformation()
+            {
+                DeleteEvent = delete_event?.Handle.DangerousGetHandle() ?? IntPtr.Zero,
+                IsDownlevelContainer = downlevel_container
+            };
+
+            return Set(JobObjectInformationClass.JobObjectServerSiloInitialize, init, throw_on_error);
+        }
+
+        /// <summary>
+        /// Initialize a Silo to a Server Silo.
+        /// </summary>
+        /// <param name="delete_event">Event to signal when silo deleted.</param>
+        /// <param name="downlevel_container">True if a downlevel container.</param>
+        /// <returns>The NT status code.</returns>
+        public void InitializeServerSilo(NtEvent delete_event, bool downlevel_container)
+        {
+            InitializeServerSilo(delete_event, downlevel_container, true);
+        }
+
+        /// <summary>
+        /// Create the silo's root object directory.
+        /// </summary>
+        /// <param name="flags">The flags for the creation.</param>
+        /// <param name="throw_on_error">True to throw on error.</param>
+        /// <returns>The NT status code.</returns>
+        public NtStatus SetSiloObjectRootDirectory(SiloObjectRootDirectoryControlFlags flags, bool throw_on_error)
+        {
+            SiloObjectRootDirectory root_dir = new SiloObjectRootDirectory
+            {
+                ControlFlags = flags
+            };
+            return Set(JobObjectInformationClass.JobObjectSiloRootDirectory, root_dir, throw_on_error);
+        }
+
+        /// <summary>
+        /// Create the silo's root object directory.
+        /// </summary>
+        /// <param name="flags">The flags for the creation.</param>
+        /// <returns>The NT status code.</returns>
+        public void SetSiloObjectRootDirectory(SiloObjectRootDirectoryControlFlags flags)
+        {
+            SetSiloObjectRootDirectory(flags, true);
+        }
+
+        /// <summary>
         /// Assign a process to this job object.
         /// </summary>
         /// <param name="process">The process to assign.</param>
         public void AssignProcess(NtProcess process)
         {
-            NtSystemCalls.NtAssignProcessToJobObject(Handle, process.Handle).ToNtException();
+            AssignProcess(process, true);
+        }
+
+        /// <summary>
+        /// Assign a process to this job object.
+        /// </summary>
+        /// <param name="throw_on_error">True to throw on error.</param>
+        /// <param name="process">The process to assign.</param>
+        /// <returns>The NT status code.</returns>
+        public NtStatus AssignProcess(NtProcess process, bool throw_on_error)
+        {
+            return NtSystemCalls.NtAssignProcessToJobObject(Handle, process.Handle).ToNtException(throw_on_error);
+        }
+
+        /// <summary>
+        /// Assign a process to this job object using current Job on Windows 1709+.
+        /// </summary>
+        public NtStatus AssignProcessPseudoHandle(bool throw_on_error)
+        {
+            return AssignProcess(NtProcess.FromHandle(new SafeKernelObjectHandle(new IntPtr(-7), false)), throw_on_error);
         }
 
         /// <summary>
@@ -381,25 +380,7 @@ namespace NtApiDotNet
         /// </summary>
         public void AssignProcessPseudoHandle()
         {
-            AssignProcess(NtProcess.FromHandle(new SafeKernelObjectHandle(new IntPtr(-7), false)));
-        }
-
-        private void SetInfo<T>(JobObjectInformationClass info_class, T value) where T : new()
-        {
-            using (var buffer = value.ToBuffer())
-            {
-                NtSystemCalls.NtSetInformationJobObject(Handle, info_class, buffer, buffer.Length).ToNtException();
-            }
-        }
-
-        private T QueryInfoFixed<T>(JobObjectInformationClass info_class) where T : new()
-        {
-            using (var buffer = new SafeStructureInOutBuffer<T>())
-            {
-                int ret_length;
-                NtSystemCalls.NtQueryInformationJobObject(Handle, info_class, buffer, buffer.Length, out ret_length).ToNtException();
-                return buffer.Result;
-            }
+            AssignProcessPseudoHandle(true);
         }
 
         /// <summary>
@@ -409,30 +390,23 @@ namespace NtApiDotNet
         /// <param name="key">The key associated with the port.</param>
         public void AssociateCompletionPort(NtIoCompletion port, IntPtr key)
         {
-            JobObjectAssociateCompletionPort info = new JobObjectAssociateCompletionPort();
-            info.CompletionKey = key;
-            info.CompletionPort = port.Handle.DangerousGetHandle();
-            SetInfo(JobObjectInformationClass.JobObjectAssociateCompletionPortInformation, info);
+            JobObjectAssociateCompletionPort info = new JobObjectAssociateCompletionPort
+            {
+                CompletionKey = key,
+                CompletionPort = port.Handle.DangerousGetHandle()
+            };
+            Set(JobObjectInformationClass.JobObjectAssociateCompletionPortInformation, info);
         }
-        
+
         /// <summary>
-        /// Get or set completion filter for job object.
+        /// Terminate this job object.
         /// </summary>
-        public JobObjectCompletionPortMessageFilters CompletionFilter
+        /// <param name="status">The termination status.</param>
+        /// <param name="throw_on_error">True to throw on error.</param>
+        /// <returns>The NT status code.</returns>
+        public NtStatus Terminate(NtStatus status, bool throw_on_error)
         {
-            get
-            {
-                int mask = ((int)JobObjectCompletionPortMessageFilters.MaxMessage - 1) - 1;
-                int result = QueryInfoFixed<int>(JobObjectInformationClass.JobObjectCompletionFilter);
-
-                return (JobObjectCompletionPortMessageFilters)(~result & mask);
-            }
-
-            set
-            {
-                int filter = (int)value;
-                SetInfo(JobObjectInformationClass.JobObjectCompletionFilter, filter);
-            }
+            return NtSystemCalls.NtTerminateJobObject(Handle, status).ToNtException(throw_on_error);
         }
 
         /// <summary>
@@ -441,7 +415,31 @@ namespace NtApiDotNet
         /// <param name="status">The termination status.</param>
         public void Terminate(NtStatus status)
         {
-            NtSystemCalls.NtTerminateJobObject(Handle, status).ToNtException();
+            Terminate(status, true);
+        }
+
+        /// <summary>
+        /// Set the limit flags for the job.
+        /// </summary>
+        /// <param name="flags">The limit flags.</param>
+        /// <param name="throw_on_error">True to throw on error.</param>
+        /// <returns>The NT status code.</returns>
+        public NtStatus SetLimitFlags(JobObjectLimitFlags flags, bool throw_on_error)
+        {
+            if (flags.HasFlag(JobObjectLimitFlags.Application))
+            {
+                return SetExtendedLimitInformationV2(i => {
+                    i.BasicLimitInformation.LimitFlags = flags;
+                    return i;
+                }, throw_on_error);
+            }
+            else
+            {
+                return SetExtendedLimitInformation(i => {
+                    i.BasicLimitInformation.LimitFlags = flags;
+                    return i;
+                }, throw_on_error);
+            }
         }
 
         /// <summary>
@@ -450,18 +448,625 @@ namespace NtApiDotNet
         /// <param name="flags">The limit flags.</param>
         public void SetLimitFlags(JobObjectLimitFlags flags)
         {
-            if ((flags & JobObjectLimitFlags.Application) != 0)
+            SetLimitFlags(flags, true);
+        }
+
+        /// <summary>
+        /// Set the Silo system root directory.
+        /// </summary>
+        /// <param name="system_root">The absolute path to the system root directory.</param>
+        /// <param name="throw_on_error">True to throw on error.</param>
+        /// <remarks>The system_root path must start with a capital drive letter and not end with a backslash.</remarks>
+        /// <returns>The NT status code.</returns>
+        public NtStatus SetSiloSystemRoot(string system_root, bool throw_on_error)
+        {
+            return Set(JobObjectInformationClass.JobObjectSiloSystemRoot, new UnicodeStringIn(system_root), throw_on_error);
+        }
+
+        /// <summary>
+        /// Set the Silo system root directory.
+        /// </summary>
+        /// <param name="system_root">The absolute path to the system root directory.</param>
+        /// <remarks>The system_root path must start with a capital drive letter and not end with a backslash.</remarks>
+        public void SetSiloSystemRoot(string system_root)
+        {
+            Set(JobObjectInformationClass.JobObjectSiloSystemRoot, new UnicodeStringIn(system_root));
+        }
+
+        /// <summary>
+        /// Set the active process limit.
+        /// </summary>
+        /// <param name="active_process_limit">The number of active processes in the job.</param>
+        /// <param name="throw_on_error">True to throw on error.</param>
+        /// <returns>The NT status code.</returns>
+        public NtStatus SetActiveProcessLimit(int active_process_limit, bool throw_on_error)
+        {
+            return SetExtendedLimitInformation(i => {
+                i.BasicLimitInformation.ActiveProcessLimit = active_process_limit;
+                i.BasicLimitInformation.LimitFlags |= JobObjectLimitFlags.ActiveProcess;
+                return i;
+            }, throw_on_error);
+        }
+
+        /// <summary>
+        /// Set the active process limit.
+        /// </summary>
+        /// <param name="active_process_limit">The number of active processes in the job.</param>
+        public void SetActiveProcessLimit(int active_process_limit)
+        {
+            SetActiveProcessLimit(active_process_limit, true);
+        }
+
+        /// <summary>
+        /// Set minimum and maximum working set size.
+        /// </summary>
+        /// <param name="minimum_working_set_size">The minimum working set size.</param>
+        /// <param name="maximum_working_set_size">The maximum working set size.</param>
+        /// <param name="throw_on_error">True to throw on error.</param>
+        /// <returns>The NT status code.</returns>
+        public NtStatus SetWorkingSetSize(long minimum_working_set_size, long maximum_working_set_size, bool throw_on_error)
+        {
+            return SetExtendedLimitInformation(i => {
+                i.BasicLimitInformation.MinimumWorkingSetSize = new IntPtr(minimum_working_set_size);
+                i.BasicLimitInformation.MaximumWorkingSetSize = new IntPtr(maximum_working_set_size);
+                i.BasicLimitInformation.LimitFlags |= JobObjectLimitFlags.WorkingSet;
+                return i;
+            }, throw_on_error);
+        }
+
+        /// <summary>
+        /// Set minimum and maximum working set size.
+        /// </summary>
+        /// <param name="minimum_working_set_size">The minimum working set size.</param>
+        /// <param name="maximum_working_set_size">The maximum working set size.</param>
+        public void SetWorkingSetSize(long minimum_working_set_size, long maximum_working_set_size)
+        {
+            SetWorkingSetSize(minimum_working_set_size, maximum_working_set_size, true);
+        }
+
+        /// <summary>
+        /// Set the process memory limit.
+        /// </summary>
+        /// <param name="process_memory_limit">The memory limit for a process.</param>
+        /// <param name="throw_on_error">True to throw on error.</param>
+        /// <returns>The NT status code.</returns>
+        public NtStatus SetProcessMemoryLimit(long process_memory_limit, bool throw_on_error)
+        {
+            return SetExtendedLimitInformation(i => {
+                i.ProcessMemoryLimit = new IntPtr(process_memory_limit);
+                i.BasicLimitInformation.LimitFlags |= JobObjectLimitFlags.ProcessMemory;
+                return i;
+            }, throw_on_error);
+        }
+
+        /// <summary>
+        /// Set the process memory limit.
+        /// </summary>
+        /// <param name="process_memory_limit">The memory limit for a process.</param>
+        /// <returns>The NT status code.</returns>
+        public void SetProcessMemoryLimit(long process_memory_limit)
+        {
+            SetProcessMemoryLimit(process_memory_limit, true);
+        }
+
+        /// <summary>
+        /// Set the job memory limit.
+        /// </summary>
+        /// <param name="job_memory_limit">The memory limit for a job.</param>
+        /// <param name="throw_on_error">True to throw on error.</param>
+        /// <returns>The NT status code.</returns>
+        public NtStatus SetJobMemoryLimit(long job_memory_limit, bool throw_on_error)
+        {
+            return SetExtendedLimitInformation(i => {
+                i.JobMemoryLimit = new IntPtr(job_memory_limit);
+                i.BasicLimitInformation.LimitFlags |= JobObjectLimitFlags.JobMemory;
+                return i;
+            }, throw_on_error);
+        }
+
+        /// <summary>
+        /// Set the job memory limit.
+        /// </summary>
+        /// <param name="process_memory_limit">The memory limit for a job.</param>
+        /// <returns>The NT status code.</returns>
+        public void SetJobMemoryLimit(long process_memory_limit)
+        {
+            SetJobMemoryLimit(process_memory_limit, true);
+        }
+
+        /// <summary>
+        /// Set the time limit for a process.
+        /// </summary>
+        /// <param name="process_time_limit">The time limit for a process, in 100ns ticks. Set to 0 to clear the timeout.</param>
+        /// <param name="throw_on_error">True to throw on error.</param>
+        /// <returns>The NT status code.</returns>
+        public NtStatus SetProcessTimeLimit(long process_time_limit, bool throw_on_error)
+        {
+            if (process_time_limit == 0)
             {
-                JobObjectExtendedExtendedLimitInformation info = new JobObjectExtendedExtendedLimitInformation();
-                info.ExtendedLimitInformation.BasicLimitInformation.LimitFlags = flags;
-                SetInfo(JobObjectInformationClass.JobObjectExtendedLimitInformation, info);
+                return SetExtendedLimitInformation(i => {
+                    i.BasicLimitInformation.PerProcessUserTimeLimit = new LargeIntegerStruct();
+                    i.BasicLimitInformation.LimitFlags &= ~JobObjectLimitFlags.ProcessTime;
+                    return i;
+                }, throw_on_error);
+            }
+
+            return SetExtendedLimitInformation(i => {
+                i.BasicLimitInformation.PerProcessUserTimeLimit = new LargeIntegerStruct() { QuadPart = process_time_limit };
+                i.BasicLimitInformation.LimitFlags |= JobObjectLimitFlags.ProcessTime;
+                return i;
+            }, throw_on_error);
+        }
+
+        /// <summary>
+        /// Set the time limit for a process.
+        /// </summary>
+        /// <param name="process_time_limit">The time limit for a process, in 100ns ticks. Set to 0 to clear the timeout.</param>
+        public void SetProcessTimeLimit(long process_time_limit)
+        {
+            SetProcessTimeLimit(process_time_limit, true);
+        }
+
+        /// <summary>
+        /// Set the time limit for a process.
+        /// </summary>
+        /// <param name="process_time_limit">The time limit for a process.</param>
+        /// <param name="throw_on_error">True to throw on error.</param>
+        /// <returns>The NT status code.</returns>
+        public NtStatus SetProcessTimeLimit(NtWaitTimeout process_time_limit, bool throw_on_error)
+        {
+            return SetProcessTimeLimit(Math.Abs(process_time_limit?.Timeout?.QuadPart ?? 0), throw_on_error);
+        }
+
+        /// <summary>
+        /// Set the time limit for a process.
+        /// </summary>
+        /// <param name="process_time_limit">The time limit for a process.</param>
+        public void SetProcessTimeLimit(NtWaitTimeout process_time_limit)
+        {
+            SetProcessTimeLimit(process_time_limit, true);
+        }
+
+        /// <summary>
+        /// Set the time limit for a job.
+        /// </summary>
+        /// <param name="job_time_limit">The time limit for a job, in 100ns ticks. Set to 0 to clear timeout.</param>
+        /// <param name="throw_on_error">True to throw on error.</param>
+        /// <returns>The NT status code.</returns>
+        public NtStatus SetJobTimeLimit(long job_time_limit, bool throw_on_error)
+        {
+            if (job_time_limit == 0)
+            {
+                return SetExtendedLimitInformation(i => {
+                    i.BasicLimitInformation.PerJobUserTimeLimit = new LargeIntegerStruct() { QuadPart = 0 };
+                    i.BasicLimitInformation.LimitFlags &= ~JobObjectLimitFlags.JobTime;
+                    return i;
+                }, throw_on_error);
+            }
+
+            return SetExtendedLimitInformation(i => {
+                i.BasicLimitInformation.PerJobUserTimeLimit = new LargeIntegerStruct() { QuadPart = job_time_limit };
+                i.BasicLimitInformation.LimitFlags |= JobObjectLimitFlags.JobTime;
+                return i;
+            }, throw_on_error);
+        }
+
+        /// <summary>
+        /// Set the time limit for a job.
+        /// </summary>
+        /// <param name="job_time_limit">The time limit for a job, in 100ns ticks. Set to 0 to clear timeout.</param>
+        public void SetJobTimeLimit(long job_time_limit)
+        {
+            SetProcessTimeLimit(job_time_limit, true);
+        }
+
+        /// <summary>
+        /// Set the time limit for a job.
+        /// </summary>
+        /// <param name="job_time_limit">The time limit for a job.</param>
+        /// <param name="throw_on_error">True to throw on error.</param>
+        /// <returns>The NT status code.</returns>
+        public NtStatus SetJobTimeLimit(NtWaitTimeout job_time_limit, bool throw_on_error)
+        {
+            return SetJobMemoryLimit(Math.Abs(job_time_limit?.Timeout?.QuadPart ?? 0), throw_on_error);
+        }
+
+        /// <summary>
+        /// Set the time limit for a job.
+        /// </summary>
+        /// <param name="job_time_limit">The time limit for a job.</param>
+        public void SetJobTimeLimit(NtWaitTimeout job_time_limit)
+        {
+            SetJobTimeLimit(job_time_limit, true);
+        }
+
+        /// <summary>
+        /// Get list of process IDs in Job.
+        /// </summary>
+        /// <param name="throw_on_error">True to throw on error.</param>
+        /// <returns>The list of process IDs.</returns>
+        public NtResult<IEnumerable<int>> GetProcessIdList(bool throw_on_error)
+        {
+            using (var buffer = QueryBuffer(JobObjectInformationClass.JobObjectBasicProcessIdList, new JobObjectBasicProcessIdList(), throw_on_error))
+            {
+                if (!buffer.IsSuccess)
+                {
+                    return buffer.Cast<IEnumerable<int>>();
+                }
+                var info = buffer.Result.Result;
+                IntPtr[] ret = new IntPtr[info.NumberOfProcessIdsInList];
+                buffer.Result.Data.ReadArray(0, ret, 0, ret.Length);
+                return ret.Select(i => i.ToInt32()).CreateResult();
+            }
+        }
+
+        /// <summary>
+        /// Get list of process IDs in Job.
+        /// </summary>
+        /// <returns>The list of process IDs.</returns>
+        public IEnumerable<int> GetProcessIdList()
+        {
+            return GetProcessIdList(true).Result;
+        }
+
+        /// <summary>
+        /// Set UI Restriction Flags.
+        /// </summary>
+        /// <param name="flags">The UI Restriction Flags.</param>
+        /// <param name="throw_on_error">True to throw on error.</param>
+        /// <returns>The NT status code.</returns>
+        public NtStatus SetUiRestrictionFlags(JobObjectUiLimitFlags flags, bool throw_on_error)
+        {
+            return Set(JobObjectInformationClass.JobObjectBasicUIRestrictions, (int)flags, throw_on_error);
+        }
+
+        /// <summary>
+        /// Set UI Restriction Flags.
+        /// </summary>
+        /// <param name="flags">The UI Restriction Flags.</param>
+        /// <returns>The NT status code.</returns>
+        public void SetUiRestrictionFlags(JobObjectUiLimitFlags flags)
+        {
+            SetUiRestrictionFlags(flags, true);
+        }
+
+        /// <summary>
+        /// Query Silo Root directory.
+        /// </summary>
+        /// <param name="throw_on_error">True to throw on error.</param>
+        /// <returns>The silo root directory.</returns>
+        public NtResult<string> QuerySiloRootDirectory(bool throw_on_error)
+        {
+            using (var buffer = new SafeStructureInOutBuffer<SiloObjectRootDirectory>(64 * 1024, true))
+            {
+                return QueryInformation(JobObjectInformationClass.JobObjectSiloRootDirectory,
+                    buffer, out int length).CreateResult(throw_on_error, () => buffer.Result.Path.ToString());
+            }
+        }
+
+        /// <summary>
+        /// Get Silo basic information.
+        /// </summary>
+        /// <param name="throw_on_error">True to throw on error.</param>
+        /// <returns>The Silo Basic Information.</returns>
+        public NtResult<SiloObjectBasicInformation> QuerySiloBasicInformation(bool throw_on_error) 
+            => Query<SiloObjectBasicInformation>(JobObjectInformationClass.JobObjectSiloBasicInformation, default, throw_on_error);
+
+        /// <summary>
+        /// Get Silo basic information.
+        /// </summary>
+        /// <param name="throw_on_error">True to throw on error.</param>
+        /// <returns>The Server Silo Basic Information.</returns>
+        public NtResult<ServerSiloBasicInformation> QueryServerSiloBasicInformation(bool throw_on_error) 
+            => Query<ServerSiloBasicInformation>(JobObjectInformationClass.JobObjectServerSiloBasicInformation, default, throw_on_error);
+
+        /// <summary>
+        /// Get Silo user shared data.
+        /// </summary>
+        /// <param name="throw_on_error">True to throw on error.</param>
+        /// <returns>The Silo User Shared Data.</returns>
+        public NtResult<SiloUserSharedData> QuerySiloUserSharedData(bool throw_on_error) 
+            => Query<SiloUserSharedData>(JobObjectInformationClass.JobObjectServerSiloUserSharedData, default, throw_on_error);
+
+        /// <summary>
+        /// Method to query information for this object type.
+        /// </summary>
+        /// <param name="info_class">The information class.</param>
+        /// <param name="buffer">The buffer to return data in.</param>
+        /// <param name="return_length">Return length from the query.</param>
+        /// <returns>The NT status code for the query.</returns>
+        public override NtStatus QueryInformation(JobObjectInformationClass info_class, SafeBuffer buffer, out int return_length)
+        {
+            return NtSystemCalls.NtQueryInformationJobObject(Handle, info_class, buffer, buffer.GetLength(), out return_length);
+        }
+
+        /// <summary>
+        /// Method to set information for this object type.
+        /// </summary>
+        /// <param name="info_class">The information class.</param>
+        /// <param name="buffer">The buffer to set data from.</param>
+        /// <returns>The NT status code for the set.</returns>
+        public override NtStatus SetInformation(JobObjectInformationClass info_class, SafeBuffer buffer)
+        {
+            return NtSystemCalls.NtSetInformationJobObject(Handle, info_class, buffer, buffer.GetLength());
+        }
+
+        #endregion
+
+        #region Public Properties
+        /// <summary>
+        /// Get or set completion filter for job object.
+        /// </summary>
+        public JobObjectCompletionPortMessageFilters CompletionFilter
+        {
+            get
+            {
+                return (JobObjectCompletionPortMessageFilters)Query<int>
+                    (JobObjectInformationClass.JobObjectCompletionFilter);
+            }
+
+            set
+            {
+                int filter = (int)value;
+                Set(JobObjectInformationClass.JobObjectCompletionFilter, filter);
+            }
+        }
+
+        /// <summary>
+        /// The count of completions for the job.
+        /// </summary>
+        public long CompletionCounter => Query<long>(JobObjectInformationClass.JobObjectCompletionCounter);
+
+        /// <summary>
+        /// Get or set the Maximum Bandwith NetRate limitation.
+        /// </summary>
+        [SupportedVersion(SupportedVersion.Windows10)]
+        public ulong? MaxBandwidth
+        {
+            get => GetNetRateValue(JobObjectNetRateControlFlags.MaxBandwidth, r => r.MaxBandwidth);
+            set => SetNetRateValue(value, JobObjectNetRateControlFlags.MaxBandwidth, (v, r) => { r.MaxBandwidth = v; return r; });
+        }
+
+        /// <summary>
+        /// Get or set the DSCP Tag NetRate limitation.
+        /// </summary>
+        [SupportedVersion(SupportedVersion.Windows10)]
+        public byte? DscpTag
+        {
+            get => GetNetRateValue(JobObjectNetRateControlFlags.DscpTag, r => r.DscpTag);
+            set => SetNetRateValue(value, JobObjectNetRateControlFlags.DscpTag, (v, r) => { r.DscpTag = v; return r; });
+        }
+
+        /// <summary>
+        /// Get or set the active process limit.
+        /// </summary>
+        public int ActiveProcessLimit
+        {
+            get => GetExtendedLimitInfo().BasicLimitInformation.ActiveProcessLimit;
+            set => SetActiveProcessLimit(value, true);
+        }
+
+        /// <summary>
+        /// Get or set the minimum working set size.
+        /// </summary>
+        public long MinimumWorkingSetSize
+        {
+            get => GetExtendedLimitInfo().BasicLimitInformation.MinimumWorkingSetSize.ToInt64();
+            set => SetWorkingSetSize(value, MaximumWorkingSetSize, true);
+        }
+
+        /// <summary>
+        /// Get or set the maximum working set size.
+        /// </summary>
+        public long MaximumWorkingSetSize
+        {
+            get => GetExtendedLimitInfo().BasicLimitInformation.MaximumWorkingSetSize.ToInt64();
+            set => SetWorkingSetSize(MinimumWorkingSetSize, value, true);
+        }
+
+        /// <summary>
+        /// Get or set the process time limit.
+        /// </summary>
+        public long ProcessTime
+        {
+            get => GetExtendedLimitInfo().BasicLimitInformation.PerProcessUserTimeLimit.QuadPart;
+            set => SetProcessTimeLimit(value, true);
+        }
+
+        /// <summary>
+        /// Get or set the process time limit.
+        /// </summary>
+        public long JobTime
+        {
+            get => GetExtendedLimitInfo().BasicLimitInformation.PerJobUserTimeLimit.QuadPart;
+            set => SetJobTimeLimit(value, true);
+        }
+
+        /// <summary>
+        /// Get or set the process memory limit.
+        /// </summary>
+        public long ProcessMemory
+        {
+            get => GetExtendedLimitInfo().ProcessMemoryLimit.ToInt64();
+            set => SetProcessMemoryLimit(value, true);
+        }
+
+        /// <summary>
+        /// Get or set the process memory limit.
+        /// </summary>
+        public long JobMemory
+        {
+            get => GetExtendedLimitInfo().JobMemoryLimit.ToInt64();
+            set => SetJobMemoryLimit(value, true);
+        }
+
+        /// <summary>
+        /// Get used peak job memory used.
+        /// </summary>
+        public long PeakJobMemoryUsed => GetExtendedLimitInfo().PeakJobMemoryUsed.ToInt64();
+
+        /// <summary>
+        /// Get used peak job memory used.
+        /// </summary>
+        public long PeakProcessMemoryUsed => GetExtendedLimitInfo().PeakProcessMemoryUsed.ToInt64();
+
+        /// <summary>
+        /// Get or set the job limit flags.
+        /// </summary>
+        public JobObjectLimitFlags LimitFlags
+        {
+            get => GetExtendedLimitInfo().BasicLimitInformation.LimitFlags;
+            set => SetLimitFlags(value);
+        }
+
+        /// <summary>
+        /// Get or set the job UI Restriction flags.
+        /// </summary>
+        public JobObjectUiLimitFlags UiRestrictionFlags
+        {
+            get => (JobObjectUiLimitFlags)Query<int>(JobObjectInformationClass.JobObjectBasicUIRestrictions);
+            set => SetUiRestrictionFlags(value);
+        }
+
+        /// <summary>
+        /// Get or set whether job breakaway is allowed.
+        /// </summary>
+        public bool BreakawayOk
+        {
+            get => (LimitFlags & JobObjectLimitFlags.BreakawayOk) == JobObjectLimitFlags.BreakawayOk;
+            set
+            {
+                if (value)
+                {
+                    LimitFlags |= JobObjectLimitFlags.BreakawayOk;
+                }
+                else
+                {
+                    LimitFlags &= ~JobObjectLimitFlags.BreakawayOk;
+                }
+            }
+        }
+
+        /// <summary>
+        /// Get or set whether silenty job breakaway is allowed.
+        /// </summary>
+        public bool SilentBreakawayOk
+        {
+            get => (LimitFlags & JobObjectLimitFlags.SilentBreakawayOk) == JobObjectLimitFlags.SilentBreakawayOk;
+            set
+            {
+                if (value)
+                {
+                    LimitFlags |= JobObjectLimitFlags.SilentBreakawayOk;
+                }
+                else
+                {
+                    LimitFlags &= ~JobObjectLimitFlags.SilentBreakawayOk;
+                }
+            }
+        }
+
+        /// <summary>
+        /// ID of container.
+        /// </summary>
+        public Guid ContainerId => Query<JobObjectContainerIdentifierV2>(JobObjectInformationClass.JobObjectContainerId).ContainerId;
+
+        /// <summary>
+        /// ID of container telemetry.
+        /// </summary>
+        public Guid ContainerTelemetryId => Query<JobObjectContainerIdentifierV2>(JobObjectInformationClass.JobObjectContainerId).ContainerTelemetryId;
+
+        /// <summary>
+        /// Job ID.
+        /// </summary>
+        public int JobId => Query<JobObjectContainerIdentifierV2>(JobObjectInformationClass.JobObjectContainerId).JobId;
+
+        /// <summary>
+        /// Get the Silo's Root Directory.
+        /// </summary>
+        public string SiloRootDirectory => QuerySiloRootDirectory(true).GetResultOrDefault(string.Empty);
+
+        /// <summary>
+        /// Get Silo basic information.
+        /// </summary>
+        public SiloObjectBasicInformation SiloBasicInformation => Query<SiloObjectBasicInformation>(JobObjectInformationClass.JobObjectSiloBasicInformation);
+
+        /// <summary>
+        /// Get Silo basic information.
+        /// </summary>
+        public ServerSiloBasicInformation ServerSiloBasicInformation => Query<ServerSiloBasicInformation>(JobObjectInformationClass.JobObjectServerSiloBasicInformation);
+
+        /// <summary>
+        /// Get Silo user shared data.
+        /// </summary>
+        public SiloUserSharedData SiloUserSharedData => Query<SiloUserSharedData>(JobObjectInformationClass.JobObjectServerSiloUserSharedData);
+
+        #endregion
+
+        #region Private Members
+        private JobObjectNetRateControlInformation GetNetRateControlInformation()
+        {
+            return Query<JobObjectNetRateControlInformation>(JobObjectInformationClass.JobObjectNetRateControlInformation);
+        }
+
+        private T? GetNetRateValue<T>(JobObjectNetRateControlFlags enable_flag, 
+            Func<JobObjectNetRateControlInformation, T> callback) where T : struct
+        {
+            var result = GetNetRateControlInformation();
+            if (result.ControlFlags.HasFlag(JobObjectNetRateControlFlags.Enable)
+                && result.ControlFlags.HasFlag(enable_flag))
+            {
+                return callback(result);
+            }
+            return null;
+        }
+
+        private void SetNetRateValue<T>(T? value, JobObjectNetRateControlFlags enable_flag, 
+            Func<T, JobObjectNetRateControlInformation, JobObjectNetRateControlInformation> update_func) where T : struct
+        {
+            var result = GetNetRateControlInformation();
+            if (value.HasValue)
+            {
+                result = update_func(value.Value, result);
+                result.ControlFlags |= JobObjectNetRateControlFlags.Enable | enable_flag;
             }
             else
             {
-                JobObjectExtendedLimitInformation info = new JobObjectExtendedLimitInformation();
-                info.BasicLimitInformation.LimitFlags = flags;
-                SetInfo(JobObjectInformationClass.JobObjectExtendedLimitInformation, info);
+                result.ControlFlags &= ~enable_flag;
+                if (result.ControlFlags == JobObjectNetRateControlFlags.Enable)
+                {
+                    result.ControlFlags = JobObjectNetRateControlFlags.None;
+                }
             }
+            Set(JobObjectInformationClass.JobObjectNetRateControlInformation, result);
         }
+
+        private NtStatus SetLimitInformation<T>(JobObjectInformationClass info_class, Func<T, T> set_limit, bool throw_on_error) where T : struct
+        {
+            var result = Query(info_class, default(T), throw_on_error);
+            if (!result.IsSuccess)
+                return result.Status;
+            var info = result.Result;
+
+            info = set_limit(info);
+            return Set(info_class, info, throw_on_error);
+        }
+
+        private NtStatus SetExtendedLimitInformation(Func<JobObjectExtendedLimitInformation, JobObjectExtendedLimitInformation> set_limit, bool throw_on_error)
+        {
+            return SetLimitInformation(JobObjectInformationClass.JobObjectExtendedLimitInformation, set_limit, throw_on_error);
+        }
+
+        private NtStatus SetExtendedLimitInformationV2(Func<JobObjectExtendedLimitInformationV2, JobObjectExtendedLimitInformationV2> set_limit, bool throw_on_error)
+        {
+            return SetLimitInformation(JobObjectInformationClass.JobObjectExtendedLimitInformation, set_limit, throw_on_error);
+        }
+
+        private JobObjectExtendedLimitInformation GetExtendedLimitInfo()
+        {
+            return Query<JobObjectExtendedLimitInformation>(JobObjectInformationClass.JobObjectExtendedLimitInformation);
+        }
+
+        #endregion
     }
 }

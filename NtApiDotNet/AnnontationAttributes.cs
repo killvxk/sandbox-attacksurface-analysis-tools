@@ -22,6 +22,7 @@ namespace NtApiDotNet
     /// </summary>
     public enum SupportedVersion
     {
+        Unknown,
         Windows7,
         Windows8,
         Windows81,
@@ -30,7 +31,14 @@ namespace NtApiDotNet
         Windows10_RS1,
         Windows10_RS2,
         Windows10_RS3,
-        Windows10_RS4
+        Windows10_RS4,
+        Windows10_RS5,
+        Windows10_19H1,
+        Windows10_19H2,
+        /// <summary>
+        /// This should always be at the end.
+        /// </summary>
+        Windows10_Latest,
     }
 #pragma warning restore 1591
 
@@ -43,7 +51,7 @@ namespace NtApiDotNet
         /// <summary>
         /// The supported version.
         /// </summary>
-        public SupportedVersion Version { get; private set; }
+        public SupportedVersion Version { get; }
 
         /// <summary>
         /// Constructor
@@ -75,6 +83,10 @@ namespace NtApiDotNet
         /// The field name which indicates the first address of data.
         /// </summary>
         public string FieldName { get; set; }
-    }
 
+        /// <summary>
+        /// When allocating this structure always include the field in the total length calculation.
+        /// </summary>
+        public bool IncludeDataField { get; set; }
+    }
 }

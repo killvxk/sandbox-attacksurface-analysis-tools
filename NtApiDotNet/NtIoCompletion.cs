@@ -18,146 +18,35 @@ using System.Runtime.InteropServices;
 
 namespace NtApiDotNet
 {
-#pragma warning disable 1591
-    [Flags]
-    public enum IoCompletionAccessRights : uint
-    {
-        QueryState = 1,
-        SetCompletion = 2,
-        GenericRead = GenericAccessRights.GenericRead,
-        GenericWrite = GenericAccessRights.GenericWrite,
-        GenericExecute = GenericAccessRights.GenericExecute,
-        GenericAll = GenericAccessRights.GenericAll,
-        Delete = GenericAccessRights.Delete,
-        ReadControl = GenericAccessRights.ReadControl,
-        WriteDac = GenericAccessRights.WriteDac,
-        WriteOwner = GenericAccessRights.WriteOwner,
-        Synchronize = GenericAccessRights.Synchronize,
-        MaximumAllowed = GenericAccessRights.MaximumAllowed,
-        AccessSystemSecurity = GenericAccessRights.AccessSystemSecurity
-    }
-
-    public enum IoCompletionInformationClass
-    {
-        IoCompletionBasicInformation
-    }
-
-    [StructLayout(LayoutKind.Sequential)]
-    public struct FileIoCompletionInformation
-    {
-        public IntPtr KeyContext;
-        public IntPtr ApcContext;
-        public IoStatusStruct IoStatusBlock;
-    }
-
-    public class FileIoCompletionResult
-    {
-        public IntPtr KeyContext { get; private set; }
-        public IntPtr ApcContext { get; private set; }
-        public IoStatus IoStatusBlock { get; private set; }
-
-        internal FileIoCompletionResult(FileIoCompletionInformation result)
-        {
-            KeyContext = result.KeyContext;
-            ApcContext = result.ApcContext;
-            IoStatusBlock = new IoStatus()
-            {
-                Information = result.IoStatusBlock.Information,
-                Pointer = result.IoStatusBlock.Pointer
-            };
-        }
-
-        internal FileIoCompletionResult(IntPtr key_context, IntPtr apc_context, IoStatus io_status)
-        {
-            KeyContext = key_context;
-            ApcContext = apc_context;
-            IoStatusBlock = io_status;
-        }
-        
-    }
-
-    public struct IoCompletionBasicInformation
-    {
-        public int Depth;
-    }
-
-    public static partial class NtSystemCalls
-    {
-        [DllImport("ntdll.dll")]
-        public static extern NtStatus NtCreateIoCompletion(
-            out SafeKernelObjectHandle IoCompletionHandle,
-            IoCompletionAccessRights DesiredAccess,
-            [In] ObjectAttributes ObjectAttributes,
-            int NumberOfConcurrentThreads
-        );
-
-        [DllImport("ntdll.dll")]
-        public static extern NtStatus NtOpenIoCompletion(
-            out SafeKernelObjectHandle IoCompletionHandle,
-            IoCompletionAccessRights DesiredAccess,
-            [In] ObjectAttributes ObjectAttributes
-        );
-
-        [DllImport("ntdll.dll")]
-        public static extern NtStatus NtRemoveIoCompletion(
-            SafeKernelObjectHandle IoCompletionHandle,
-            out IntPtr KeyContext,
-            out IntPtr ApcContext,
-            [In, Out] IoStatus IoStatusBlock,
-            LargeInteger Timeout
-        );
-
-        [DllImport("ntdll.dll")]
-        public static extern NtStatus NtRemoveIoCompletionEx(
-            SafeKernelObjectHandle IoCompletionHandle,
-            [Out] FileIoCompletionInformation[] IoCompletionInformation,
-            int InformationCount,
-            out int NumEntriesRemoved,
-            [In] LargeInteger Timeout,
-            bool Alertable
-        );
-
-        [DllImport("ntdll.dll")]
-        public static extern NtStatus NtQueryIoCompletion(
-            SafeKernelObjectHandle IoCompletionHandle,
-            IoCompletionInformationClass IoCompletionInformationClass,
-            SafeBuffer IoCompletionInformation,
-            int IoCompletionInformationLength,
-            OptionalInt32 ReturnLength
-        );
-
-        [DllImport("ntdll.dll")]
-        public static extern NtStatus NtSetIoCompletion(
-            SafeKernelObjectHandle IoCompletionHandle,
-            IntPtr KeyContext,
-            IntPtr ApcContext,
-            NtStatus Status,
-            IntPtr IoStatusInformation
-        );
-
-        [DllImport("ntdll.dll")]
-        public static extern NtStatus NtSetIoCompletionEx(
-            SafeKernelObjectHandle IoCompletionHandle,
-            SafeKernelObjectHandle IoCompletionPacketHandle,
-            IntPtr KeyContext,
-            IntPtr ApcContext,
-            NtStatus IoStatus,
-            IntPtr IoStatusInformation
-        );
-    }
-
-#pragma warning restore 1591
-
     /// <summary>
     /// Class representing an NT IO Completion Port object
     /// </summary>
     [NtType("IoCompletion")]
-    public class NtIoCompletion : NtObjectWithDuplicate<NtIoCompletion, IoCompletionAccessRights>
+    public class NtIoCompletion : NtObjectWithDuplicateAndInfo<NtIoCompletion, IoCompletionAccessRights, IoCompletionInformationClass, IoCompletionInformationClass>
     {
+        #region Constructors
+
         internal NtIoCompletion(SafeKernelObjectHandle handle) 
             : base(handle)
         {
         }
+
+        internal sealed class NtTypeFactoryImpl : NtTypeFactoryImplBase
+        {
+            public NtTypeFactoryImpl() : base(true)
+            {
+            }
+
+            protected override sealed NtResult<NtIoCompletion> OpenInternal(ObjectAttributes obj_attributes,
+                IoCompletionAccessRights desired_access, bool throw_on_error)
+            {
+                return NtIoCompletion.Open(obj_attributes, desired_access, throw_on_error);
+            }
+        }
+
+        #endregion
+
+        #region Static Methods
 
         /// <summary>
         /// Create an IO Completion Port object
@@ -240,11 +129,6 @@ namespace NtApiDotNet
             return NtSystemCalls.NtOpenIoCompletion(out handle, desired_access, object_attributes).CreateResult(throw_on_error, () => new NtIoCompletion(handle));
         }
 
-        internal static NtResult<NtObject> FromName(ObjectAttributes object_attributes, AccessMask desired_access, bool throw_on_error)
-        {
-            return Open(object_attributes, desired_access.ToSpecificAccess<IoCompletionAccessRights>(), throw_on_error).Cast<NtObject>();
-        }
-
         /// <summary>
         /// Open an IO Completion Port object
         /// </summary>
@@ -271,6 +155,24 @@ namespace NtApiDotNet
         {
             return Open(name, null, IoCompletionAccessRights.MaximumAllowed);
         }
+        #endregion
+
+        #region Public Methods
+
+        /// <summary>
+        /// Remove a queued status from the queue.
+        /// </summary>
+        /// <param name="timeout">An optional timeout.</param>
+        /// <param name="throw_on_error">True to throw on error.</param>
+        /// <returns>The completion result.</returns>
+        /// <exception cref="NtException">Thrown on error or timeout.</exception>
+        public NtResult<FileIoCompletionResult> Remove(NtWaitTimeout timeout, bool throw_on_error)
+        {
+            var io_status = new IoStatus();
+            return NtSystemCalls.NtRemoveIoCompletion(Handle, out IntPtr key_context,
+                out IntPtr apc_context, io_status, timeout.ToLargeInteger())
+                .CreateResult(throw_on_error, () => new FileIoCompletionResult(key_context, apc_context, io_status));
+        }
 
         /// <summary>
         /// Remove a queued status from the queue.
@@ -280,15 +182,25 @@ namespace NtApiDotNet
         /// <exception cref="NtException">Thrown on error or timeout.</exception>
         public FileIoCompletionResult Remove(NtWaitTimeout timeout)
         {
-            IntPtr key_context;
-            IntPtr apc_context;
+            return Remove(timeout, true).Result;
+        }
+
+        /// <summary>
+        /// Remove multiple queued status from the queue.
+        /// </summary>
+        /// <param name="max_count">Maximum number of status to remove.</param>
+        /// <param name="timeout">An optional timeout.</param>
+        /// <param name="alertable">Indicate whether the wait is alertable.</param>
+        /// <param name="throw_on_error">True to throw on error.</param>
+        /// <returns>Array of completion results. Length can be &lt;= max_count.</returns>
+        public NtResult<FileIoCompletionResult[]> Remove(int max_count, NtWaitTimeout timeout, bool alertable, bool throw_on_error)
+        {
             IoStatus io_status = new IoStatus();
-            NtStatus status = NtSystemCalls.NtRemoveIoCompletion(Handle, out key_context, out apc_context, io_status, timeout.Timeout).ToNtException();
-            if (status != NtStatus.STATUS_SUCCESS)
-            {
-                throw new NtException(status);
-            }
-            return new FileIoCompletionResult(key_context, apc_context, io_status);
+            FileIoCompletionInformation[] result = new FileIoCompletionInformation[max_count];
+
+            return NtSystemCalls.NtRemoveIoCompletionEx(Handle, result, max_count,
+                out int result_count, timeout.ToLargeInteger(), alertable).CreateResult(throw_on_error, () =>
+                result.Take(result_count).Select(r => new FileIoCompletionResult(r)).ToArray());
         }
 
         /// <summary>
@@ -300,17 +212,7 @@ namespace NtApiDotNet
         /// <returns>Array of completion results. Length can be &lt;= max_count. If timeout then returns an empty array.</returns>
         public FileIoCompletionResult[] Remove(int max_count, NtWaitTimeout timeout, bool alertable)
         {
-            IoStatus io_status = new IoStatus();
-            FileIoCompletionInformation[] result = new FileIoCompletionInformation[max_count];
-            int result_count = 0;
-
-            NtStatus status = NtSystemCalls.NtRemoveIoCompletionEx(Handle, result, max_count,
-                out result_count, timeout.Timeout, alertable).ToNtException();
-            if (status == NtStatus.STATUS_SUCCESS)
-            {
-                return result.Take(result_count).Select(r => new FileIoCompletionResult(r)).ToArray();
-            }
-            return new FileIoCompletionResult[0];
+            return Remove(max_count, timeout, alertable, false).GetResultOrDefault(new FileIoCompletionResult[0]);
         }
 
         /// <summary>
@@ -346,19 +248,31 @@ namespace NtApiDotNet
         }
 
         /// <summary>
+        /// Method to query information for this object type.
+        /// </summary>
+        /// <param name="info_class">The information class.</param>
+        /// <param name="buffer">The buffer to return data in.</param>
+        /// <param name="return_length">Return length from the query.</param>
+        /// <returns>The NT status code for the query.</returns>
+        public override NtStatus QueryInformation(IoCompletionInformationClass info_class, SafeBuffer buffer, out int return_length)
+        {
+            return NtSystemCalls.NtQueryIoCompletion(Handle, info_class,
+                        buffer, (int)buffer.ByteLength, out return_length);
+        }
+
+        #endregion
+
+        #region Public Properties
+        /// <summary>
         /// Get current depth of IO Completion Port
         /// </summary>
         public int Depth
         {
             get
             {
-                using (var buffer = new SafeStructureInOutBuffer<IoCompletionBasicInformation>())
-                {
-                    NtSystemCalls.NtQueryIoCompletion(Handle, IoCompletionInformationClass.IoCompletionBasicInformation,
-                        buffer, buffer.Length, null).ToNtException();
-                    return buffer.Result.Depth;
-                }
+                return Query<IoCompletionBasicInformation>(IoCompletionInformationClass.IoCompletionBasicInformation).Depth;
             }
         }
+        #endregion
     }
 }

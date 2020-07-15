@@ -12,118 +12,48 @@
 //  See the License for the specific language governing permissions and
 //  limitations under the License.
 
-using System;
 using System.Runtime.InteropServices;
 
 namespace NtApiDotNet
 {
-#pragma warning disable 1591
-    [Flags]
-    public enum EventAccessRights : uint
-    {
-        QueryState = 1,
-        ModifyState = 2,
-        GenericRead = GenericAccessRights.GenericRead,
-        GenericWrite = GenericAccessRights.GenericWrite,
-        GenericExecute = GenericAccessRights.GenericExecute,
-        GenericAll = GenericAccessRights.GenericAll,
-        Delete = GenericAccessRights.Delete,
-        ReadControl = GenericAccessRights.ReadControl,
-        WriteDac = GenericAccessRights.WriteDac,
-        WriteOwner = GenericAccessRights.WriteOwner,
-        Synchronize = GenericAccessRights.Synchronize,
-        MaximumAllowed = GenericAccessRights.MaximumAllowed,
-        AccessSystemSecurity = GenericAccessRights.AccessSystemSecurity
-    }
-    public enum EventType
-    {
-        NotificationEvent,
-        SynchronizationEvent
-    }    
-
-    public static partial class NtSystemCalls
-    {
-        [DllImport("ntdll.dll")]
-        public static extern NtStatus NtCreateEvent(
-            out SafeKernelObjectHandle EventHandle,
-            EventAccessRights DesiredAccess,
-            [In] ObjectAttributes ObjectAttributes,
-            EventType EventType,
-            bool InitialState);
-
-        [DllImport("ntdll.dll")]
-        public static extern NtStatus NtOpenEvent(
-            out SafeKernelObjectHandle EventHandle,
-            EventAccessRights DesiredAccess,
-            [In] ObjectAttributes ObjectAttributes);
-
-        [DllImport("ntdll.dll")]
-        public static extern NtStatus NtSetEvent(
-            SafeHandle EventHandle,
-            out int PreviousState);
-
-        [DllImport("ntdll.dll")]
-        public static extern NtStatus NtClearEvent(
-            SafeHandle EventHandle);
-
-        [DllImport("ntdll.dll")]
-        public static extern NtStatus NtPulseEvent(
-            SafeHandle EventHandle,
-            out int PreviousState);
-    }
-#pragma warning restore 1591
-
     /// <summary>
     /// Class representing a NT Event object
     /// </summary>
     [NtType("Event")]
-    public sealed class NtEvent : NtObjectWithDuplicate<NtEvent, EventAccessRights>
+    public sealed class NtEvent : NtObjectWithDuplicateAndInfo<NtEvent, EventAccessRights, EventInformationClass, EventInformationClass>
     {
+        #region Constructors
         internal NtEvent(SafeKernelObjectHandle handle) 
             : base(handle)
         {
         }
 
-        /// <summary>
-        /// Set the event state
-        /// </summary>
-        /// <returns>The previous state of the event</returns>
-        public int Set()
+        internal sealed class NtTypeFactoryImpl : NtTypeFactoryImplBase
         {
-            int previous_state;
-            NtSystemCalls.NtSetEvent(Handle, out previous_state).ToNtException();
-            return previous_state;
+            public NtTypeFactoryImpl() : base(true)
+            {
+            }
+
+            protected override sealed NtResult<NtEvent> OpenInternal(ObjectAttributes obj_attributes,
+                EventAccessRights desired_access, bool throw_on_error)
+            {
+                return NtEvent.Open(obj_attributes, desired_access, throw_on_error);
+            }
         }
 
-        /// <summary>
-        /// Clear the event state
-        /// </summary>
-        public void Clear()
-        {            
-            NtSystemCalls.NtClearEvent(Handle).ToNtException();
-        }
+        #endregion
 
-        /// <summary>
-        /// Pulse the event state.
-        /// </summary>
-        /// <returns>The previous state of the event</returns>
-        public int Pulse()
-        {
-            int previous_state;
-            NtSystemCalls.NtPulseEvent(Handle, out previous_state).ToNtException();
-            return previous_state;
-        }
-
+        #region Static Methods
         /// <summary>
         /// Create an event object
         /// </summary>
         /// <param name="name">The path to the event</param>
         /// <param name="root">The root object for relative path names</param>
-        /// <param name="type">The type of the even</param>
+        /// <param name="type">The type of the event</param>
         /// <param name="initial_state">The initial state of the event</param>
         /// <returns>The event object</returns>
         public static NtEvent Create(string name, NtObject root, EventType type, bool initial_state)
-        {            
+        {
             using (ObjectAttributes obja = new ObjectAttributes(name, AttributeFlags.CaseInsensitive, root))
             {
                 return Create(obja, type, initial_state, EventAccessRights.MaximumAllowed);
@@ -140,7 +70,7 @@ namespace NtApiDotNet
         /// <returns>The event object</returns>
         public static NtEvent Create(ObjectAttributes object_attributes, EventType type, bool initial_state, EventAccessRights desired_access)
         {
-            return Create(object_attributes, type, initial_state, desired_access, true).Result;      
+            return Create(object_attributes, type, initial_state, desired_access, true).Result;
         }
 
 
@@ -155,15 +85,15 @@ namespace NtApiDotNet
         /// <returns>The NT status code and object result.</returns>
         public static NtResult<NtEvent> Create(ObjectAttributes object_attributes, EventType type, bool initial_state, EventAccessRights desired_access, bool throw_on_error)
         {
-            SafeKernelObjectHandle handle;
-            return NtSystemCalls.NtCreateEvent(out handle, desired_access, object_attributes, type, initial_state).CreateResult(throw_on_error, () => new NtEvent(handle));
+            return NtSystemCalls.NtCreateEvent(out SafeKernelObjectHandle handle, desired_access, 
+                object_attributes, type, initial_state).CreateResult(throw_on_error, () => new NtEvent(handle));
         }
 
         /// <summary>
         /// Create an event object
         /// </summary>
         /// <param name="name">The path to the event</param>
-        /// <param name="type">The type of the even</param>
+        /// <param name="type">The type of the event</param>
         /// <param name="initial_state">The initial state of the event</param>
         /// <returns>The event object</returns>
         public static NtEvent Create(string name, EventType type, bool initial_state)
@@ -178,7 +108,7 @@ namespace NtApiDotNet
         /// <param name="desired_access">The desired access for the event</param>
         /// <returns>The event object</returns>
         public static NtEvent Open(string name, NtObject root, EventAccessRights desired_access)
-        {            
+        {
             using (ObjectAttributes obja = new ObjectAttributes(name, AttributeFlags.CaseInsensitive, root))
             {
                 return Open(obja, desired_access);
@@ -209,11 +139,6 @@ namespace NtApiDotNet
             return NtSystemCalls.NtOpenEvent(out handle, desired_access, object_attributes).CreateResult(throw_on_error, () => new NtEvent(handle));
         }
 
-        internal static NtResult<NtObject> FromName(ObjectAttributes object_attributes, AccessMask desired_access, bool throw_on_error)
-        {
-            return Open(object_attributes, desired_access.ToSpecificAccess<EventAccessRights>(), throw_on_error).Cast<NtObject>();
-        }
-
         /// <summary>
         /// Open an event object
         /// </summary>
@@ -234,5 +159,92 @@ namespace NtApiDotNet
         {
             return Open(name, null);
         }
+        #endregion
+
+        #region Public Methods
+
+        /// <summary>
+        /// Set the event state
+        /// </summary>
+        /// <param name="throw_on_error">True to throw an exception on error.</param>
+        /// <returns>The previous state of the event and NT status.</returns>
+        public NtResult<int> Set(bool throw_on_error)
+        {
+            return NtSystemCalls.NtSetEvent(Handle, out int previous_state).CreateResult(throw_on_error, () => previous_state);
+        }
+
+        /// <summary>
+        /// Set the event state
+        /// </summary>
+        /// <returns>The previous state of the event</returns>
+        public int Set()
+        {
+            return Set(true).Result;
+        }
+
+        /// <summary>
+        /// Clear the event state
+        /// </summary>
+        /// <param name="throw_on_error">True to throw an exception on error.</param>
+        /// <returns>The NT status code.</returns>
+        public NtStatus Clear(bool throw_on_error)
+        {
+            return NtSystemCalls.NtClearEvent(Handle).ToNtException(throw_on_error);
+        }
+
+        /// <summary>
+        /// Clear the event state
+        /// </summary>
+        public void Clear()
+        {
+            Clear(true);
+        }
+
+        /// <summary>
+        /// Pulse the event state.
+        /// </summary>
+        /// <param name="throw_on_error">True to throw an exception on error.</param>
+        /// <returns>The previous state of the event and NT status.</returns>
+        public NtResult<int> Pulse(bool throw_on_error)
+        {
+            return NtSystemCalls.NtPulseEvent(Handle, out int previous_state).CreateResult(throw_on_error, () => previous_state);
+        }
+
+        /// <summary>
+        /// Pulse the event state.
+        /// </summary>
+        /// <returns>The previous state of the event</returns>
+        public int Pulse()
+        {
+            return Pulse(true).Result;
+        }
+
+        /// <summary>
+        /// Method to query information for this object type.
+        /// </summary>
+        /// <param name="info_class">The information class.</param>
+        /// <param name="buffer">The buffer to return data in.</param>
+        /// <param name="return_length">Return length from the query.</param>
+        /// <returns>The NT status code for the query.</returns>
+        public override NtStatus QueryInformation(EventInformationClass info_class, SafeBuffer buffer, out int return_length)
+        {
+            return NtSystemCalls.NtQueryEvent(Handle, info_class, buffer, buffer.GetLength(), out return_length);
+        }
+
+        #endregion
+
+        #region Public Properties
+
+        /// <summary>
+        /// Get event type.
+        /// </summary>
+        public EventType EventType => Query<EventBasicInformation>(EventInformationClass.EventBasicInformation).EventType;
+
+        /// <summary>
+        /// Get current event state.
+        /// </summary>
+        public int EventState => Query<EventBasicInformation>(EventInformationClass.EventBasicInformation).EventState;
+
+        #endregion
     }
 }

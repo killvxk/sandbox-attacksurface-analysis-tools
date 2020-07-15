@@ -14,138 +14,15 @@
 
 using System;
 using System.Collections.Generic;
-using System.Runtime.InteropServices;
 
 namespace NtApiDotNet
 {
-#pragma warning disable 1591
-    public enum WnfStateNameLifetime
-    {
-        WellKnown,
-        Permanent,
-        Volatile,
-        Temporary
-    }
-
-    public enum WnfStateNameInformation
-    {
-        NameExist,
-        SubscribersPresent,
-        IsQuiescent
-    }
-
-    public enum WnfDataScope
-    {
-        System,
-        Session,
-        User,
-        Process,
-        Machine
-    }
-
-    [StructLayout(LayoutKind.Sequential)]
-    public class WnfTypeId
-    {
-        public Guid TypeId;
-    }
-
-    [StructLayout(LayoutKind.Sequential)]
-    public struct WnfDeliveryDescriptor 
-    {
-        public ulong SubscriptionId;
-        public ulong StateName;
-        public uint ChangeStamp;
-        public uint StateDataSize;
-        public uint EventMask;
-        public WnfTypeId TypeId;
-        public uint StateDataOffset;
-    }
-
-    public class WnfStateData
-    {
-        public byte[] Data { get; }
-        public int ChangeStamp { get; }
-        public WnfStateData(byte[] data, int changestamp)
-        {
-            Data = data;
-            ChangeStamp = changestamp;
-        }
-    }
-
-    public static partial class NtSystemCalls
-    {
-        [DllImport("ntdll.dll")]
-        public static extern NtStatus NtCreateWnfStateName(
-            out ulong StateName,
-            WnfStateNameLifetime NameLifetime,
-            WnfDataScope DataScope,
-            bool PersistData,
-            [In, Optional] WnfTypeId TypeId,
-            int MaximumStateSize,
-            SafeBuffer SecurityDescriptor
-        );
-
-        [DllImport("ntdll.dll")]
-        public static extern NtStatus NtQueryWnfStateData(
-             ref ulong StateName,
-             [In, Optional] WnfTypeId TypeId,
-             [Optional] IntPtr ExplicitScope,
-             out int ChangeStamp,
-             SafeBuffer Buffer,
-             ref int BufferSize
-         );
-
-        [DllImport("ntdll.dll")]
-        public static extern NtStatus NtUpdateWnfStateData(
-            ref ulong StateName,
-            SafeBuffer Buffer,
-            int Length,
-            [In, Optional] WnfTypeId TypeId,
-            [Optional] IntPtr ExplicitScope,
-            int MatchingChangeStamp,
-            [MarshalAs(UnmanagedType.Bool)] bool CheckChangeStamp
-        );
-
-        [DllImport("ntdll.dll")]
-        public static extern NtStatus NtDeleteWnfStateName(
-            ref ulong StateName
-        );
-
-        [DllImport("ntdll.dll")]
-        public static extern NtStatus NtQueryWnfStateNameInformation(
-            ref ulong StateName,
-            WnfStateNameInformation NameInfoClass,
-            IntPtr ExplicitScope,
-            SafeBuffer InfoBuffer,
-            int InfoBufferSize
-        );
-    }
-
-    public enum WnfAccessRights : uint
-    {
-        ReadData = 1,
-        WriteData = 2,
-        Unknown10 = 0x10,
-        GenericRead = GenericAccessRights.GenericRead,
-        GenericWrite = GenericAccessRights.GenericWrite,
-        GenericExecute = GenericAccessRights.GenericExecute,
-        GenericAll = GenericAccessRights.GenericAll,
-        Delete = GenericAccessRights.Delete,
-        ReadControl = GenericAccessRights.ReadControl,
-        WriteDac = GenericAccessRights.WriteDac,
-        WriteOwner = GenericAccessRights.WriteOwner,
-        Synchronize = GenericAccessRights.Synchronize,
-        MaximumAllowed = GenericAccessRights.MaximumAllowed,
-        AccessSystemSecurity = GenericAccessRights.AccessSystemSecurity
-    }
-
-#pragma warning restore 1591
-
     /// <summary>
     /// NT WNF object.
     /// </summary>
     public class NtWnf
     {
+        #region Private Members
         private bool _read_state_data;
         private SecurityDescriptor _security_descriptor;
         private static readonly string[] _root_keys = { @"\Registry\Machine\System\CurrentControlSet\Control\Notifications",
@@ -162,6 +39,39 @@ namespace NtApiDotNet
             }
         }
 
+        private void ReadStateData(NtKeyValue value)
+        {
+            _security_descriptor = new SecurityDescriptor(value.Data);
+        }
+
+        private void ReadStateData()
+        {
+            if (_read_state_data)
+            {
+                return;
+            }
+            _read_state_data = true;
+            using (ObjectAttributes obj_attr = new ObjectAttributes(_root_keys[(int)Lifetime], AttributeFlags.CaseInsensitive))
+            {
+                using (var key = NtKey.Open(obj_attr, KeyAccessRights.QueryValue, KeyCreateOptions.NonVolatile, false))
+                {
+                    if (!key.IsSuccess)
+                    {
+                        return;
+                    }
+
+                    var value = key.Result.QueryValue(StateName.ToString("X016"), false);
+                    if (value.IsSuccess)
+                    {
+                        ReadStateData(value.Result);
+                    }
+                }
+            }
+        }
+
+        #endregion
+
+        #region Static Members
         /// <summary>
         /// Get the generic mapping for a 
         /// </summary>
@@ -286,6 +196,65 @@ namespace NtApiDotNet
         }
 
         /// <summary>
+        /// Open a state name. Doesn't check if it exists.
+        /// </summary>
+        /// <param name="name">The name to open.</param>
+        /// <param name="check_exists">True to check state name exists.</param>
+        /// <returns>The created object.</returns>
+        public static NtWnf Open(string name, bool check_exists)
+        {
+            if (!NtWnfWellKnownNames.Names.ContainsKey(name))
+            {
+                throw new NtException(NtStatus.STATUS_OBJECT_NAME_NOT_FOUND);
+            }
+            return Open(NtWnfWellKnownNames.Names[name], check_exists, true).Result;
+        }
+
+        /// <summary>
+        /// Open a state name. Doesn't check if it exists.
+        /// </summary>
+        /// <param name="name">The name to open.</param>
+        /// <returns>The created object.</returns>
+        public static NtWnf Open(string name)
+        {
+            return Open(name, true);
+        }
+
+        /// <summary>
+        /// Get registered notifications.
+        /// </summary>
+        /// <returns>The list of registered notifications.</returns>
+        public static IEnumerable<NtWnf> GetRegisteredNotifications()
+        {
+            foreach (string key_name in _root_keys)
+            {
+                using (ObjectAttributes obj_attr = new ObjectAttributes(key_name, AttributeFlags.CaseInsensitive))
+                {
+                    using (var key = NtKey.Open(obj_attr, KeyAccessRights.QueryValue, KeyCreateOptions.NonVolatile, false))
+                    {
+                        if (!key.IsSuccess)
+                        {
+                            continue;
+                        }
+                        foreach (var value in key.Result.QueryValues())
+                        {
+                            if (!ulong.TryParse(value.Name, System.Globalization.NumberStyles.HexNumber, null, out ulong state_name))
+                            {
+                                continue;
+                            }
+                            NtWnf result = new NtWnf(state_name);
+                            result.ReadStateData(value);
+                            result._read_state_data = true;
+                            yield return result;
+                        }
+                    }
+                }
+            }
+        }
+        #endregion
+
+        #region Public Properties
+        /// <summary>
         /// Get the state name for this WNF entry.
         /// </summary>
         public ulong StateName { get; }
@@ -313,36 +282,6 @@ namespace NtApiDotNet
             }
         }
 
-        private void ReadStateData(NtKeyValue value)
-        {
-            _security_descriptor = new SecurityDescriptor(value.Data);
-        }
-
-        private void ReadStateData()
-        {
-            if (_read_state_data)
-            {
-                return;
-            }
-            _read_state_data = true;
-            using (ObjectAttributes obj_attr = new ObjectAttributes(_root_keys[(int)Lifetime], AttributeFlags.CaseInsensitive))
-            {
-                using (var key = NtKey.Open(obj_attr, KeyAccessRights.QueryValue, KeyCreateOptions.NonVolatile, false))
-                {
-                    if (!key.IsSuccess)
-                    {
-                        return;
-                    }
-
-                    var value = key.Result.QueryValue(StateName.ToString("X"), false);
-                    if (value.IsSuccess)
-                    {
-                        ReadStateData(value.Result);
-                    }
-                }
-            }
-        }
-
         /// <summary>
         /// Get the security descriptor for this object, if known.
         /// </summary>
@@ -360,6 +299,14 @@ namespace NtApiDotNet
             }
         }
 
+        /// <summary>
+        /// Get a name for the WNF notification.
+        /// </summary>
+        public string Name => NtWnfWellKnownNames.GetName(StateName) ?? StateName.ToString("X016");
+
+        #endregion
+
+        #region Public Methods
         /// <summary>
         /// Query state data for the WNF object.
         /// </summary>
@@ -439,36 +386,15 @@ namespace NtApiDotNet
             UpdateStateData(data, null, IntPtr.Zero, null, true);
         }
 
+        #endregion
+
         /// <summary>
-        /// Get registered notifications.
+        /// Overridden ToString method.
         /// </summary>
-        /// <returns>The list of registered notifications.</returns>
-        public static IEnumerable<NtWnf> GetRegisteredNotifications()
+        /// <returns>The string representation.</returns>
+        public override string ToString()
         {
-            foreach (string key_name in _root_keys)
-            {
-                using (ObjectAttributes obj_attr = new ObjectAttributes(key_name, AttributeFlags.CaseInsensitive))
-                {
-                    using (var key = NtKey.Open(obj_attr, KeyAccessRights.QueryValue, KeyCreateOptions.NonVolatile, false))
-                    {
-                        if (!key.IsSuccess)
-                        {
-                            continue;
-                        }
-                        foreach (var value in key.Result.QueryValues())
-                        {
-                            if (!ulong.TryParse(value.Name, System.Globalization.NumberStyles.HexNumber, null, out ulong state_name))
-                            {
-                                continue;
-                            }
-                            NtWnf result = new NtWnf(state_name);
-                            result.ReadStateData(value);
-                            result._read_state_data = true;
-                            yield return result;
-                        }
-                    }
-                }
-            }
+            return $"WNF:{Name} {Lifetime}";
         }
 
         internal NtWnf(ulong state_name)

@@ -21,22 +21,20 @@ namespace NtApiDotNet
     /// <summary>
     /// Result from a native create process call.
     /// </summary>
+    [Obsolete("Use NtProcessCreateResult")]
     public sealed class CreateUserProcessResult : IDisposable
     {
         /// <summary>
         /// Handle to the process
         /// </summary>
-        public NtProcess Process
-        {
-            get; private set;
-        }
+        public NtProcess Process { get; }
 
         /// <summary>
         /// Handle to the initial thread
         /// </summary>
         public NtThread Thread
         {
-            get; private set;
+            get;
         }
 
         /// <summary>
@@ -44,20 +42,20 @@ namespace NtApiDotNet
         /// </summary>
         public NtFile ImageFile
         {
-            get; private set;
+            get;
         }
 
         /// <summary>
         /// Handle to the image section
         /// </summary>
-        public NtSection SectionHandle { get; private set; }
+        public NtSection SectionHandle { get; }
 
         /// <summary>
         /// Handle to the IFEO key (if it exists)
         /// </summary>
         public RegistryKey IFEOKeyHandle
         {
-            get; private set;
+            get;
         }
 
         /// <summary>
@@ -65,7 +63,7 @@ namespace NtApiDotNet
         /// </summary>
         public SectionImageInformation ImageInfo
         {
-            get; private set;
+            get;
         }
 
         /// <summary>
@@ -73,7 +71,7 @@ namespace NtApiDotNet
         /// </summary>
         public ClientId ClientId
         {
-            get; private set;
+            get;
         }
 
         /// <summary>
@@ -103,7 +101,7 @@ namespace NtApiDotNet
         /// </summary>
         public NtStatus Status
         {
-            get; private set;
+            get;
         }
 
         /// <summary>
@@ -122,7 +120,7 @@ namespace NtApiDotNet
         /// </summary>
         public ProcessCreateInfoData CreateInfo
         {
-            get; private set;
+            get;
         }
 
         /// <summary>
@@ -130,7 +128,7 @@ namespace NtApiDotNet
         /// </summary>
         public ProcessCreateState CreateState
         {
-            get; private set;
+            get;
         }
 
         internal CreateUserProcessResult(SafeKernelObjectHandle process_handle, SafeKernelObjectHandle thread_handle,
@@ -176,8 +174,7 @@ namespace NtApiDotNet
         /// <param name="exitcode">Exit code for termination</param>
         public void Terminate(NtStatus exitcode)
         {
-            if (Process != null)
-                Process.Terminate(exitcode);
+            Process?.Terminate(exitcode);
         }
 
         /// <summary>
@@ -186,9 +183,7 @@ namespace NtApiDotNet
         /// <returns>The suspend count</returns>
         public int Resume()
         {
-            if (Thread != null)
-                return Thread.Resume();
-            return 0;
+            return Thread?.Resume() ?? 0;
         }
 
         /// <summary>
@@ -217,14 +212,11 @@ namespace NtApiDotNet
                     }
                 }
 
-                Process.Close();
-                Thread.Close();
-                ImageFile.Close();
-                SectionHandle.Close();
-                if (IFEOKeyHandle != null)
-                {
-                    IFEOKeyHandle.Close();
-                }
+                Process?.Close();
+                Thread?.Close();
+                ImageFile?.Close();
+                SectionHandle?.Close();
+                IFEOKeyHandle?.Close();
                 disposedValue = true;
             }
         }

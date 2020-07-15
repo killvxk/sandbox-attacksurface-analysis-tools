@@ -14,6 +14,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Runtime.ConstrainedExecution;
 using System.Runtime.InteropServices;
 
@@ -105,7 +106,6 @@ namespace NtApiDotNet
             }
         }
         #endregion
-
     }
 
     /// <summary>
@@ -113,6 +113,71 @@ namespace NtApiDotNet
     /// </summary>
     public sealed class DisposableList : DisposableList<IDisposable>
     {
+        /// <summary>
+        /// Constructor
+        /// </summary>
+        public DisposableList()
+        {
+        }
+
+        /// <summary>
+        /// Constructor
+        /// </summary>
+        /// <param name="capacity">The initial capacity of the list</param>
+        public DisposableList(int capacity) : base(capacity)
+        {
+        }
+
+        /// <summary>
+        /// Constructor
+        /// </summary>
+        /// <param name="collection">A collection to initialize the list</param>
+        public DisposableList(IEnumerable<IDisposable> collection) : base(collection)
+        {
+        }
+
+        internal SidAndAttributes[] CreateSidAndAttributes(IEnumerable<Sid> sids)
+        {
+            if (sids == null)
+            {
+                return new SidAndAttributes[0];
+            }
+            return sids.Select(s => new SidAndAttributes()
+            {
+                Sid = AddResource(s.ToSafeBuffer()).DangerousGetHandle(),
+                Attributes = GroupAttributes.Enabled
+            }).ToArray();
+        }
+    }
+
+    internal static class DisposableListUtils
+    {
+        internal static SafeSidBufferHandle AddSid(this DisposableList list, Sid sid)
+        {
+            if (sid == null)
+            {
+                return SafeSidBufferHandle.Null;
+            }
+            return list.AddResource(sid.ToSafeBuffer());
+        }
+
+        internal static SafeStructureInOutBuffer<T> AddStructure<T>(this DisposableList list, T value) where T : class, new()
+        {
+            if (value == null)
+            {
+                return SafeStructureInOutBuffer<T>.Null;
+            }
+            return list.AddResource(new SafeStructureInOutBuffer<T>(value));
+        }
+
+        internal static SafeBuffer AddSecurityDescriptor(this DisposableList list, SecurityDescriptor sd)
+        {
+            if (sd == null)
+            {
+                return SafeHGlobalBuffer.Null;
+            }
+            return list.AddResource(sd.ToSafeBuffer());
+        }
     }
 
     /// <summary>

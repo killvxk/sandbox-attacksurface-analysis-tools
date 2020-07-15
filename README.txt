@@ -1,25 +1,218 @@
 sandbox-attacksurface-analysis-tools
 
-(c) Google Inc. 2015, 2016, 2017, 2018
+(c) Google Inc. 2015, 2016, 2017, 2018, 2019, 2020
 Developed by James Forshaw
 
-This is a small suite of tools to test various properties of sandboxes on Windows. Many of the checking
-tools take a -p flag which is used to specify the PID of a sandboxed process. The tool will impersonate
+This is a small suite of PowerShell tools to test various properties of sandboxes on Windows. Many of the
+tools take a -ProcessId flag which is used to specify the PID of a sandboxed process. The tool will impersonate
 the token of that process and determine what access is allowed from that location. Also it's recommended
 to run these tools as an administrator or local system to ensure the system can be appropriately enumerated.
 
-CheckExeManifest: Check for specific executable manifest flags.
-CheckNetworkAccess: Check access to network stack.
-NewProcessFromToken: Create a new process based on existing token.
+EditSection: View and manipulate memory sections.
 TokenView: View and manipulate various process token values.
 NtApiDotNet: A basic managed library to access NT system calls and objects.
 NtObjectManager: A powershell module which uses NtApiDotNet to expose the NT object manager.
 ViewSecurityDescriptor: View the security descriptor from an SDDL string or an inherited object.
 
+You can load the using the Import-Module Cmdlet. You'll need to disable signing requirements however.
+
+For example copy the module to %USERPROFILE%\Documents\WindowsPowerShell\Modules then load the module with:
+
+Import-Module NtObjectManager
+
+You can now do things like listing the NT object manager namespace using:
+
+Get-ChildItem NtObject:\
+
+Also see help for various commons such as Get-NtProcess, Get-NtType or New-File.
+
 The tools can be built with Visual Studio 2017. It's possible to also build NtApiDotNet and NtObjectManager
-with .NET Core 2.0 by building the specific project files.
+with .NET Core 2.0/PowerShell Core 6.0 by building the specific project files.
+
+In order to build for PowerShell Core 6.0 you first need to build the .NET Framework
+version of the module, or pull the latest version of NtObjectManager from the PowerShell
+Gallery. Next build the .NET Core version of the module using the dotnet command line tool:
+
+dotnet build NtObjectManager\NtObjectManager.Core.csproj -c Release
+
+Now copy the files NtObjectManager.dll and NtApiDotNet.dll from the output folder to
+the folder Core inside the original NtObjectManager module module directory.
+
+Thanks to the people who were willing to test it and give feedback:
+* Matt Graeber
+* Lee Holmes
+* Casey Smith
+* Jared Atkinson
 
 Release Notes:
+
+1.1.28
+--------
+* Added Import-Win32Module and Get-Win32Module.
+* Added support for Registry Keys in the NtObjectManager provider.
+* Added Get-NtDirectoryEntry.
+* Added Win32 CreateRemoteThread.
+* Added addition Registry Key functions.
+* Added Network Authentication commands.
+* Added Authentication Token formatting commands.
+* Added new filtering features to TokenViewer.
+* Improved cmdlets for getting and setting object information classes.
+* Added Add-NtSection and Remove-NtSection.
+* Added Compare-NtObject.
+* Added Test-NtTokenPrivilege.
+* Added type parsing from PDBs via SymbolResolver.
+* Added a summary format to Format-NtSecurityDescriptor.
+* Added Out-HexDump.
+* Added C# compiler support for .NET Core Support of Get-RpcClient.
+* Updated New-NtSecurityDescriptor and Edit-NtSecurityDescriptor.
+* Basic C++ NDR formatting from irsl@.
+* Added Format-NtJob.
+* Added New-NtSecurityAttribute and Get-NtAceConditionData.
+* Added Device/User Claims to Token Viewer and Format-NtToken.
+* Added many different commands to manipulate Security Descriptors.
+* Added Win32 Security Descriptor commands.
+* Added filtering for accessible path commands.
+* Added Audit support.
+* Added basic AuthZ API support.
+* Added basic ASN.1 DER parsing and Format-ASN1DER command.
+* Added Kerberos Keytab file reading and writing.
+
+1.1.27
+--------
+* Added support for directory change notifications.
+* Added New-NtDesktop, Get-NtDesktop and Get-NtDesktopName.
+* Added New-NtWindowStation, Get-NtWindowStation and Get-NtWindowStationName.
+* Changed Win32 error codes to an enumeration.
+* Added Load/Unload driver.
+* Added properties to NtType to show access masks.
+* Added basic SendInput method.
+* Added token source tab to Token Viewer.
+* Updated for the Job object and New-NtJob.
+* Added NtWindow class a HWND enumeration.
+* Added Get-AccessibleWindowStation command.
+* Added some well known WNF names.
+* Added option to Get-AccessibleService to check file permissions.
+* Added Set-NtProcessJob command.
+* Added Get-AccessibleToken command.
+* Added support for compound ACEs.
+* Added Get/Sid-NtTokenSid and Get/Set-NtTokenGroup.
+* Added Get-AccessibleEventTrace command.
+* Added Get-AccessibleWnf command.
+
+1.1.26
+--------
+* Add DeviceGuid to Get/New-NtFile
+* Fixed bug in ETA registrations and added GUID enumeration.
+* Added SetExceptionPort to NtProcess.
+* Added child process mitigation improvements.
+* Added extended Fork.
+* Updated native process creation support.
+* Various new non-throwing methods.
+* Updated to C# 7.3.
+* Added list of access rights to NtType.
+* Added default mandatory policy to NtType.
+* Added SetDisposition methods to NtFile.
+* Added console and GUI support for Object ACEs.
+* Updated access checking to support Object Types.
+* Access check returns a structure rather than just an access mask.
+* CPP style NDR formatting (#21)
+* Added Get-NtTokenPrivilege command.
+* Added Get-NtLocallyUniqueId command.
+
+1.1.25
+--------
+* Added new options to Get-NtSecurityDescriptor.
+* Updated accessible resource checking.
+* Added Remove-NtTokenPrivilege.
+* Added Session option to Get-NtToken.
+* Added command line option to Show-NtToken.
+* Added information classes for symbolic links.
+
+1.1.24
+--------
+* Added Add-NtTokenSecurityAttribute and Remove-NtTokenSecurityAttribute cmdlets.
+* Added additional properties for running servies.
+* Added support for drivers to Get-RunningService and Get-AccesibleService.
+* Added fake service NtType objects for services and SCM to allow formatting and the UI.
+* Added NtType property to security descriptors.
+* Added option to Show-NtToken to elevate to admin.
+* Added Suspend, Resume and Stop process commands.
+* Added Get-NtEaBuffer and Set-NtEaBuffer commands.
+* Added open to Get-NtDebug to get from a process.
+
+1.1.23
+--------
+* Added basic ETW APIs.
+* Added new thread properties.
+* Added Close-NtObject function.
+* Added Get-AccessibleScheduledTask cmdlet.
+* Added typing for New-ExecutionAlias and renamed to Set-ExecutionAlias.
+* Added Compare-RpcServer.
+* Fixed handling of FQBN token security attributes.
+* Added option to Format-RpcClient to output to a directory.
+* Added Select-RpcServer cmdlet.
+* Added RPC ALPC port brute force.
+
+1.1.22
+--------
+* Removed old standalone utilities, everything should be accessible from PowerShell.
+* Added Test-NetworkAccess cmdlet to replace CheckNetworkAccess utility.
+* Added Set-NtFileHardlink cmdlet.
+* Various fixes for RPC client code.
+
+1.1.21
+--------
+* Various updates to the NDR parser, including new types and support for correlation expressions.
+* Added complete transaction cmdlets.
+* Added extended process creation flags for Win32Process.
+* Added Format-NtSecurityDescriptor to display on the console
+* Added Copy-NtObject cmdlet.
+* Added basic RPC ALPC client support.
+* Added option to specify a debug object for a Win32 process.
+* Added processor system information.
+
+1.1.20
+--------
+* Added basic ALPC support including cmdlets.
+* Added better debug support including cmdlets.
+* Display container access rights in SD GUI and also extract SACL if available.
+* Added Set/Get-NtProcessMitigation policy to get specific policies.
+* Exposed process mitigation policies using flag enums.
+* Added Win32.AppContainerProfile to create and delete AC profiles.
+* Many new non-throwing methods added to objects.
+* Added ReadScatter and WriteGather methods to NtFile.
+* Improved formatting of IO Control Codes.
+* Added ability to acknowledge oplock breaks.
+* Added Wow64 FS redirection support.
+* Use proper WIN32 NT status facility for Win32 errors as status codes.
+* Added read/write to file from safe buffers.
+* Added methods to zero or fill safe buffers using native methods.
+* Fix bug with querying BnoIsolationPrefix which next took into account the enable flag correctly.
+* Fix from diversenok "Improve detection of restricted tokens (#20)"
+* Code cleanups and source code separation.
+
+1.1.19
+--------
+* Fix for bug in NtWaitTimeout not creating infinite waits.
+* Added some new NTSTATUS codes and break apart the status.
+* Added some new FSCTL codes.
+
+1.1.18.1
+--------
+* Added missing release notes.
+
+1.1.18
+------
+* Added better support for transaction objects including some cmdlets.
+* Added general QueryInformation and SetInformation methods to a number of objects.
+* Added side channel isolation mitigation policy.
+* Added more FS volume information classes.
+* Added extended section/memory functions.
+* Added a few missing NDR type formats.
+* Added BNO isolation process attribute.
+* Added new types to separate out named pipes from normal files.
+* Added Start-NtFileOplock.
+* Added support for absolute security descriptors.
 
 1.1.17
 ------

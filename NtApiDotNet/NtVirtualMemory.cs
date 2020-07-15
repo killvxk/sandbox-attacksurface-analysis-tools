@@ -19,255 +19,6 @@ using System.Runtime.InteropServices;
 
 namespace NtApiDotNet
 {
-#pragma warning disable 1591
-    public static partial class NtSystemCalls
-    {
-        [DllImport("ntdll.dll")]
-        public static extern NtStatus NtReadVirtualMemory(SafeKernelObjectHandle ProcessHandle,
-            IntPtr BaseAddress, SafeBuffer Buffer, int BufferLength, out int ReturnLength);
-
-        [DllImport("ntdll.dll")]
-        public static extern NtStatus NtWriteVirtualMemory(SafeKernelObjectHandle ProcessHandle,
-            IntPtr BaseAddress, SafeBuffer Buffer, int BufferLength, out int ReturnLength);
-
-        [DllImport("ntdll.dll")]
-        public static extern NtStatus NtQueryVirtualMemory(
-          SafeKernelObjectHandle ProcessHandle,
-          IntPtr BaseAddress,
-          MemoryInformationClass MemoryInformationClass,
-          SafeBuffer MemoryInformation,
-          IntPtr MemoryInformationLength,
-          out IntPtr ReturnLength
-        );
-
-        [DllImport("ntdll.dll")]
-        public static extern NtStatus NtFlushVirtualMemory(
-          SafeKernelObjectHandle ProcessHandle,
-          ref IntPtr BaseAddress,
-          ref IntPtr RegionSize,
-          out IoStatus IoStatus
-        );
-
-        [DllImport("ntdll.dll")]
-        public static extern NtStatus NtAllocateVirtualMemory(
-          SafeKernelObjectHandle ProcessHandle,
-          ref IntPtr BaseAddress,
-          IntPtr ZeroBits,
-          ref IntPtr RegionSize,
-          MemoryAllocationType AllocationType,
-          MemoryAllocationProtect Protect
-        );
-
-        [DllImport("ntdll.dll")]
-        public static extern NtStatus NtFreeVirtualMemory(
-            SafeKernelObjectHandle ProcessHandle,
-            ref IntPtr BaseAddress,
-            ref IntPtr RegionSize,
-            MemoryFreeType FreeType
-        );
-
-        [DllImport("ntdll.dll")]
-        public static extern NtStatus NtProtectVirtualMemory(
-            SafeKernelObjectHandle ProcessHandle,
-            ref IntPtr BaseAddress,
-            ref IntPtr RegionSize,
-            MemoryAllocationProtect NewProtect,
-            out MemoryAllocationProtect OldProtect
-        );
-    }
-
-    [Flags]
-    public enum MemoryAllocationProtect
-    {
-        None = 0,
-        NoAccess = 0x01,
-        ReadOnly = 0x02,
-        ReadWrite = 0x04,
-        WriteCopy = 0x08,
-        Execute = 0x10,
-        ExecuteRead = 0x20,
-        ExecuteReadWrite = 0x40,
-        ExecuteWriteCopy = 0x80,
-        Guard = 0x100,
-        NoCache = 0x200,
-        WriteCombine = 0x400,
-    }
-
-    [Flags]
-    public enum MemoryState : uint
-    {
-        Commit = 0x1000,
-        Reserve = 0x2000,
-        Free = 0x10000,
-    }
-
-    [Flags]
-    public enum MemoryAllocationType : uint
-    {
-        Commit = 0x1000,
-        Reserve = 0x2000,
-        Reset = 0x80000,
-        TopDown = 0x100000,
-        Physical = 0x400000,
-        ResetUndo = 0x1000000,
-        LargePages = 0x20000000,
-        WriteWatch = 0x200000,
-        FourMBPages = 0x80000000,
-    }
-
-    [Flags]
-    public enum MemoryFreeType : uint
-    {
-        Decommit = 0x4000,
-        Release = 0x8000
-    }
-
-    [Flags]
-    public enum MemoryType
-    {
-        None = 0,
-        Private = 0x20000,
-        Mapped = 0x40000,
-        Image = 0x1000000
-    }
-
-    public enum MemoryInformationClass
-    {
-        MemoryBasicInformation,
-        MemoryWorkingSetInformation,
-        MemoryMappedFilenameInformation,
-        MemoryRegionInformation,
-        MemoryWorkingSetExInformation,
-        MemorySharedCommitInformation,
-        MemoryImageInformation,
-        MemoryRegionInformationEx,
-        MemoryPrivilegedBasicInformation,
-        MemoryEnclaveImageInformation,
-        MemoryBasicInformationCapped
-    }
-
-    [StructLayout(LayoutKind.Sequential)]
-    public struct MemoryBasicInformation
-    {
-        public IntPtr BaseAddress;
-        public IntPtr AllocationBase;
-        public MemoryAllocationProtect AllocationProtect;
-        public IntPtr RegionSize;
-        public MemoryState State;
-        public MemoryAllocationProtect Protect;
-        public MemoryType Type;
-    }
-
-#pragma warning restore 1591
-
-    /// <summary>
-    /// Class to represent memory information.
-    /// </summary>
-    public class MemoryInformation
-    {
-        /// <summary>
-        /// Base address of memory region.
-        /// </summary>
-        public long BaseAddress { get; private set; }
-
-        /// <summary>
-        /// Allocation base for memory region.
-        /// </summary>
-        public long AllocationBase { get; private set; }
-
-        /// <summary>
-        /// Initial allocation protection.
-        /// </summary>
-        public MemoryAllocationProtect AllocationProtect { get; private set; }
-
-        /// <summary>
-        /// Region size.
-        /// </summary>
-        public long RegionSize { get; private set; }
-
-        /// <summary>
-        /// Memory state.
-        /// </summary>
-        public MemoryState State { get; private set; }
-
-        /// <summary>
-        /// Current memory protection.
-        /// </summary>
-        public MemoryAllocationProtect Protect { get; private set; }
-
-        /// <summary>
-        /// Memory type.
-        /// </summary>
-        public MemoryType Type { get; private set; }
-
-        /// <summary>
-        /// The mapped image path, if an image.
-        /// </summary>
-        public string MappedImagePath { get; private set; }
-
-        internal MemoryInformation(MemoryBasicInformation basic_info, string mapped_image_path)
-        {
-            BaseAddress = basic_info.BaseAddress.ToInt64();
-            AllocationBase = basic_info.AllocationBase.ToInt64();
-            AllocationProtect = basic_info.AllocationProtect;
-            RegionSize = basic_info.RegionSize.ToInt64();
-            State = basic_info.State;
-            Protect = basic_info.Protect;
-            Type = basic_info.Type;
-            MappedImagePath = mapped_image_path ?? String.Empty;
-        }
-    }
-
-    /// <summary>
-    /// Class which represents a mapped file.
-    /// </summary>
-    public class MappedFile
-    {
-        /// <summary>
-        /// Native path to file.
-        /// </summary>
-        public string Path { get; private set; }
-        /// <summary>
-        /// List of mapped sections.
-        /// </summary>
-        public IEnumerable<MemoryInformation> Sections { get; private set; }
-        /// <summary>
-        /// Mapped base address of file.
-        /// </summary>
-        public long BaseAddress { get; private set; }
-        /// <summary>
-        /// Mapped size of file.
-        /// </summary>
-        public long Size { get; private set; }
-
-        /// <summary>
-        /// True if the mapped file is an image section.
-        /// </summary>
-        public bool IsImage { get; private set; }
-
-        internal MappedFile(IEnumerable<MemoryInformation> sections)
-        {
-            MemoryInformation first = sections.First();
-            BaseAddress = first.AllocationBase;
-            MemoryInformation last = sections.Last();
-            Size = (last.BaseAddress - BaseAddress) + last.RegionSize;
-            Sections = sections;
-            Path = first.MappedImagePath;
-            IsImage = first.Type == MemoryType.Image;
-        }
-
-        static IEnumerable<MemoryInformation> ToEnumerable(MemoryInformation mem_info)
-        {
-            List<MemoryInformation> ret = new List<MemoryInformation>();
-            ret.Add(mem_info);
-            return ret.AsReadOnly();
-        }
-
-        internal MappedFile(MemoryInformation mem_info) : this(ToEnumerable(mem_info))
-        {
-        }
-    }
-
     /// <summary>
     /// Static class to access virtual memory functions of NT.
     /// </summary>
@@ -309,17 +60,20 @@ namespace NtApiDotNet
         /// </summary>
         /// <param name="process">The process to query.</param>
         /// <param name="base_address">The base address.</param>
+        /// <param name="throw_on_error">True to throw on error.</param>
         /// <returns>The memory information for the region.</returns>
         /// <exception cref="NtException">Thrown on error.</exception>
-        public static MemoryInformation QueryMemoryInformation(SafeKernelObjectHandle process, long base_address)
+        public static NtResult<MemoryInformation> QueryMemoryInformation(SafeKernelObjectHandle process, long base_address, bool throw_on_error)
         {
             MemoryBasicInformation basic_info = new MemoryBasicInformation();
-            string mapped_image_path = String.Empty;
+            string mapped_image_path = string.Empty;
             using (var buffer = new SafeStructureInOutBuffer<MemoryBasicInformation>())
             {
-                NtSystemCalls.NtQueryVirtualMemory(process,
+                NtStatus status = NtSystemCalls.NtQueryVirtualMemory(process,
                     new IntPtr(base_address), MemoryInformationClass.MemoryBasicInformation,
-                    buffer, buffer.LengthIntPtr, out IntPtr ret_length).ToNtException();
+                    buffer, buffer.LengthIntPtr, out IntPtr ret_length);
+                if (!status.IsSuccess())
+                    return status.CreateResultFromError<MemoryInformation>(throw_on_error);
                 basic_info = buffer.Result;
             }
 
@@ -332,7 +86,19 @@ namespace NtApiDotNet
                 }
             }
 
-            return new MemoryInformation(basic_info, mapped_image_path);
+            return new MemoryInformation(basic_info, mapped_image_path).CreateResult();
+        }
+
+        /// <summary>
+        /// Query memory information for a process.
+        /// </summary>
+        /// <param name="process">The process to query.</param>
+        /// <param name="base_address">The base address.</param>
+        /// <returns>The memory information for the region.</returns>
+        /// <exception cref="NtException">Thrown on error.</exception>
+        public static MemoryInformation QueryMemoryInformation(SafeKernelObjectHandle process, long base_address)
+        {
+            return QueryMemoryInformation(process, base_address, true).Result;
         }
 
         /// <summary>
@@ -343,21 +109,16 @@ namespace NtApiDotNet
         public static IEnumerable<MemoryInformation> QueryMemoryInformation(SafeKernelObjectHandle process)
         {
             List<MemoryInformation> ret = new List<MemoryInformation>();
-            try
+            long base_address = 0;
+            do
             {
-                long base_address = 0;
-
-                do
-                {
-                    MemoryInformation mem_info = QueryMemoryInformation(process, base_address);
-                    ret.Add(mem_info);
-                    base_address = mem_info.BaseAddress + mem_info.RegionSize;
-                }
-                while (base_address < long.MaxValue);
+                var mem_info = QueryMemoryInformation(process, base_address, false);
+                if (!mem_info.IsSuccess)
+                    break;
+                ret.Add(mem_info.Result);
+                base_address = mem_info.Result.BaseAddress + mem_info.Result.RegionSize;
             }
-            catch (NtException)
-            {
-            }
+            while (base_address < long.MaxValue);
             return ret;
         }
 
@@ -374,8 +135,8 @@ namespace NtApiDotNet
             // Assume image files tend to be mapped once.
             return mapped_files.Where(m => m.Type == MemoryType.Image)
                                .GroupBy(m => m.MappedImagePath)
-                               .Select(g => new MappedFile(g.ToList().AsReadOnly()))
-                               .Concat(mapped_files.Where(m => m.Type == MemoryType.Mapped).Select(m => new MappedFile(m)))
+                               .Select(g => new MappedFile(g.ToList().AsReadOnly(), process))
+                               .Concat(mapped_files.Where(m => m.Type == MemoryType.Mapped).Select(m => new MappedFile(m, process)))
                                .OrderBy(f => f.BaseAddress);
         }
 
@@ -478,7 +239,15 @@ namespace NtApiDotNet
         /// <typeparam name="T">Type of structure to read.</typeparam>
         public static T[] ReadMemoryArray<T>(SafeKernelObjectHandle process, long base_address, int count) where T : new()
         {
-            int element_size = Marshal.SizeOf(typeof(T));
+            Type type = typeof(T);
+            bool char_type = false;
+            if (type == typeof(char))
+            {
+                type = typeof(short);
+                char_type = true;
+            }
+
+            int element_size = Marshal.SizeOf(type);
             using (var buffer = new SafeHGlobalBuffer(element_size * count))
             {
                 NtSystemCalls.NtReadVirtualMemory(process,
@@ -487,11 +256,18 @@ namespace NtApiDotNet
                 {
                     throw new NtException(NtStatus.STATUS_PARTIAL_COPY);
                 }
+
+                if (char_type)
+                {
+                    return (T[])(object)BufferUtils.ReadCharArray(buffer, 0, count);
+                }
+
                 T[] result = new T[count];
                 for (int i = 0; i < count; ++i)
                 {
                     int offset = i * element_size;
-                    result[i] = (T)Marshal.PtrToStructure(buffer.DangerousGetHandle() + offset, typeof(T));
+                    
+                    result[i] = (T)Marshal.PtrToStructure(buffer.DangerousGetHandle() + offset, type);
                 }
                 return result;
             }
@@ -507,7 +283,7 @@ namespace NtApiDotNet
         /// <typeparam name="T">Type of structure to write.</typeparam>
         public static void WriteMemoryArray<T>(SafeKernelObjectHandle process, long base_address, T[] data) where T : new()
         {
-            using (var buffer = data.ToArrayBuffer())
+            using (var buffer = data.ToBuffer())
             {
                 NtSystemCalls.NtWriteVirtualMemory(process,
                     new IntPtr(base_address), buffer, buffer.Length, out int return_length).ToNtException();
@@ -526,17 +302,40 @@ namespace NtApiDotNet
         /// <param name="region_size">The region size to allocate.</param>
         /// <param name="allocation_type">The type of allocation.</param>
         /// <param name="protect">The allocation protection.</param>
+        /// <param name="throw_on_error">True to throw on error.</param>
         /// <returns>The address of the allocated region.</returns>
         /// <exception cref="NtException">Thrown on error.</exception>
-        public static long AllocateMemory(SafeKernelObjectHandle process, long base_address, 
+        public static NtResult<long> AllocateMemory(SafeKernelObjectHandle process, long base_address, 
+            long region_size, MemoryAllocationType allocation_type, MemoryAllocationProtect protect,
+            bool throw_on_error)
+        {
+            IntPtr base_address_ptr = new IntPtr(base_address);
+            IntPtr region_size_ptr = new IntPtr(region_size);
+            return NtSystemCalls.NtAllocateVirtualMemory(process, ref base_address_ptr,
+                IntPtr.Zero, ref region_size_ptr, allocation_type, protect)
+                .CreateResult(throw_on_error, () => base_address_ptr.ToInt64());
+        }
+
+        /// <summary>
+        /// Allocate virtual memory in a process.
+        /// </summary>
+        /// <param name="process">The process to allocate in.</param>
+        /// <param name="base_address">Optional base address, if 0 will automatically select a base.</param>
+        /// <param name="region_size">The region size to allocate.</param>
+        /// <param name="allocation_type">The type of allocation.</param>
+        /// <param name="protect">The allocation protection.</param>
+        /// <returns>The address of the allocated region.</returns>
+        /// <exception cref="NtException">Thrown on error.</exception>
+        public static long AllocateMemory(SafeKernelObjectHandle process, long base_address,
             long region_size, MemoryAllocationType allocation_type, MemoryAllocationProtect protect)
         {
             IntPtr base_address_ptr = new IntPtr(base_address);
             IntPtr region_size_ptr = new IntPtr(region_size);
-            NtSystemCalls.NtAllocateVirtualMemory(process, ref base_address_ptr, 
+            NtSystemCalls.NtAllocateVirtualMemory(process, ref base_address_ptr,
                 IntPtr.Zero, ref region_size_ptr, allocation_type, protect).ToNtException();
             return base_address_ptr.ToInt64();
         }
+
 
         /// <summary>
         /// Free virtual emmory in a process.
@@ -546,12 +345,30 @@ namespace NtApiDotNet
         /// <param name="region_size">The size of the region.</param>
         /// <param name="free_type">The type to free.</param>
         /// <exception cref="NtException">Thrown on error.</exception>
-        public static void FreeMemory(SafeKernelObjectHandle process, long base_address, long region_size, MemoryFreeType free_type)
+        public static void FreeMemory(SafeKernelObjectHandle process, 
+            long base_address, long region_size, MemoryFreeType free_type)
+        {
+            FreeMemory(process, base_address, region_size, free_type, true);
+        }
+
+        /// <summary>
+        /// Free virtual emmory in a process.
+        /// </summary>
+        /// <param name="process">The process to free in.</param>
+        /// <param name="base_address">Base address of region to free</param>
+        /// <param name="region_size">The size of the region.</param>
+        /// <param name="free_type">The type to free.</param>
+        /// <param name="throw_on_error">True to throw on error.</param>
+        /// <exception cref="NtException">Thrown on error.</exception>
+        public static NtStatus FreeMemory(SafeKernelObjectHandle process,
+            long base_address, long region_size, MemoryFreeType free_type,
+            bool throw_on_error)
         {
             IntPtr base_address_ptr = new IntPtr(base_address);
             IntPtr region_size_ptr = new IntPtr(region_size);
 
-            NtSystemCalls.NtFreeVirtualMemory(process, ref base_address_ptr, ref region_size_ptr, free_type).ToNtException();
+            return NtSystemCalls.NtFreeVirtualMemory(process, ref base_address_ptr,
+                ref region_size_ptr, free_type).ToNtException(throw_on_error);
         }
 
         /// <summary>
@@ -566,12 +383,117 @@ namespace NtApiDotNet
         public static MemoryAllocationProtect ProtectMemory(SafeKernelObjectHandle process, 
             long base_address, long region_size, MemoryAllocationProtect new_protect)
         {
+            return ProtectMemory(process, base_address, region_size, new_protect, true).Result;
+        }
+
+        /// <summary>
+        /// Change protection on a region of memory.
+        /// </summary>
+        /// <param name="process">The process to change memory protection</param>
+        /// <param name="base_address">The base address</param>
+        /// <param name="region_size">The size of the memory region.</param>
+        /// <param name="new_protect">The new protection type.</param>
+        /// <param name="throw_on_error">True to throw on error.</param>
+        /// <returns>The old protection for the region.</returns>
+        /// <exception cref="NtException">Thrown on error.</exception>
+        public static NtResult<MemoryAllocationProtect> ProtectMemory(SafeKernelObjectHandle process,
+            long base_address, long region_size, MemoryAllocationProtect new_protect, bool throw_on_error)
+        {
             IntPtr base_address_ptr = new IntPtr(base_address);
             IntPtr region_size_ptr = new IntPtr(region_size);
 
-            NtSystemCalls.NtProtectVirtualMemory(process, ref base_address_ptr,
-                ref region_size_ptr, new_protect, out MemoryAllocationProtect old_protect).ToNtException();
-            return old_protect;
+            return NtSystemCalls.NtProtectVirtualMemory(process, ref base_address_ptr,
+                ref region_size_ptr, new_protect, out MemoryAllocationProtect old_protect)
+                .CreateResult(throw_on_error, () => old_protect);
+        }
+
+        /// <summary>
+        /// Query working set information for an address in a process.
+        /// </summary>
+        /// <param name="process">The process to query.</param>
+        /// <param name="base_address">The base address to query.</param>
+        /// <param name="throw_on_error">True to throw on error</param>
+        /// <returns>The working set information.</returns>
+        /// <exception cref="NtException">Thrown on error.</exception>
+        public static NtResult<MemoryWorkingSetExInformation> QueryWorkingSetEx(SafeKernelObjectHandle process, long base_address, bool throw_on_error)
+        {
+            MemoryWorkingSetExInformation working_set = new MemoryWorkingSetExInformation() { VirtualAddress = new IntPtr(base_address) };
+            using (var buffer = working_set.ToBuffer())
+            {
+                return NtSystemCalls.NtQueryVirtualMemory(process, IntPtr.Zero, MemoryInformationClass.MemoryWorkingSetExInformation, 
+                    buffer, buffer.LengthIntPtr, out IntPtr return_length).CreateResult(throw_on_error, () => buffer.Result);
+            }
+        }
+
+        /// <summary>
+        /// Query working set information for an address in a process.
+        /// </summary>
+        /// <param name="process">The process to query.</param>
+        /// <param name="base_address">The base address to query.</param>
+        /// <returns>The working set information.</returns>
+        /// <exception cref="NtException">Thrown on error.</exception>
+        public static MemoryWorkingSetExInformation QueryWorkingSetEx(SafeKernelObjectHandle process, long base_address)
+        {
+            return QueryWorkingSetEx(process, base_address, true).Result;
+        }
+
+        /// <summary>
+        /// Query image information for an address in a process.
+        /// </summary>
+        /// <param name="process">The process to query.</param>
+        /// <param name="base_address">The base address to query.</param>
+        /// <param name="throw_on_error">True to throw on error</param>
+        /// <returns>The image information.</returns>
+        /// <exception cref="NtException">Thrown on error.</exception>
+        public static NtResult<MemoryImageInformation> QueryImageInformation(SafeKernelObjectHandle process, long base_address, bool throw_on_error)
+        {
+            using (var buffer = new SafeStructureInOutBuffer<MemoryImageInformation>())
+            {
+                return NtSystemCalls.NtQueryVirtualMemory(process, new IntPtr(base_address),
+                    MemoryInformationClass.MemoryImageInformation, buffer, buffer.LengthIntPtr, 
+                    out IntPtr return_length).CreateResult(throw_on_error, () => buffer.Result);
+            }
+        }
+
+        /// <summary>
+        /// Query image information for an address in a process.
+        /// </summary>
+        /// <param name="process">The process to query.</param>
+        /// <param name="base_address">The base address to query.</param>
+        /// <returns>The image information.</returns>
+        /// <exception cref="NtException">Thrown on error.</exception>
+        public static MemoryImageInformation QueryImageInformation(SafeKernelObjectHandle process, long base_address)
+        {
+            return QueryImageInformation(process, base_address, true).Result;
+        }
+
+        /// <summary>
+        /// Determine if two addresses are the same mapped file.
+        /// </summary>
+        /// <param name="address_1">The first address.</param>
+        /// <param name="address_2">The second address.</param>
+        /// <param name="throw_on_error">True to throw on error.</param>
+        /// <returns>True if the mapped memory is the same file.</returns>
+        public static NtResult<bool> AreMappedFilesTheSame(long address_1, long address_2, bool throw_on_error)
+        {
+            NtStatus status = NtSystemCalls.NtAreMappedFilesTheSame(new IntPtr(address_1),
+                new IntPtr(address_2));
+            if (status == NtStatus.STATUS_NOT_SAME_DEVICE)
+            {
+                return false.CreateResult();
+            }
+            return status.CreateResult(throw_on_error, () => true);
+        }
+
+        /// <summary>
+        /// Determine if two addresses are the same mapped file.
+        /// </summary>
+        /// <param name="address_1">The first address.</param>
+        /// <param name="address_2">The second address.</param>
+        /// <returns>True if the mapped memory is the same file.</returns>
+        public static bool AreMappedFilesTheSame(long address_1, long address_2)
+        {
+            return AreMappedFilesTheSame(address_1, address_2, true).Result;
         }
     }
 }

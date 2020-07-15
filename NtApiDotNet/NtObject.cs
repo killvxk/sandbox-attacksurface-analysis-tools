@@ -14,204 +14,16 @@
 
 using System;
 using System.Linq;
-using System.Reflection;
-using System.Runtime.InteropServices;
 
 namespace NtApiDotNet
 {
-#pragma warning disable 1591
-    /// <summary>
-    /// Generic access rights.
-    /// </summary>
-    [Flags]
-    public enum GenericAccessRights : uint
-    {
-        None = 0,
-        Access0 = 0x00000001,
-        Access1 = 0x00000002,
-        Access2 = 0x00000004,
-        Access3 = 0x00000008,
-        Access4 = 0x00000010,
-        Access5 = 0x00000020,
-        Access6 = 0x00000040,
-        Access7 = 0x00000080,
-        Access8 = 0x00000100,
-        Access9 = 0x00000200,
-        Access10 = 0x00000400,
-        Access11 = 0x00000800,
-        Access12 = 0x00001000,
-        Access13 = 0x00002000,
-        Access14 = 0x00004000,
-        Access15 = 0x00008000,
-        Delete = 0x00010000,
-        ReadControl = 0x00020000,
-        WriteDac = 0x00040000,
-        WriteOwner = 0x00080000,
-        Synchronize = 0x00100000,
-        AccessSystemSecurity = 0x01000000,
-        MaximumAllowed = 0x02000000,
-        GenericAll = 0x10000000,
-        GenericExecute = 0x20000000,
-        GenericWrite = 0x40000000,
-        GenericRead = 0x80000000,
-    };
-
-    /// <summary>
-    /// Options for duplicating objects.
-    /// </summary>
-    [Flags]
-    public enum DuplicateObjectOptions
-    {
-        None = 0,
-        /// <summary>
-        /// Close the original handle.
-        /// </summary>
-        CloseSource = 1,
-        /// <summary>
-        /// Duplicate with the same access.
-        /// </summary>
-        SameAccess = 2,
-        /// <summary>
-        /// Duplicate with the same handle attributes.
-        /// </summary>
-        SameAttributes = 4,
-    }
-
-    /// <summary>
-    /// Information class for NtQueryObject
-    /// </summary>
-    /// <see cref="NtSystemCalls.NtQueryObject(SafeHandle, ObjectInformationClass, SafeBuffer, int, out int)"/>
-    public enum ObjectInformationClass
-    {
-        ObjectBasicInformation,
-        ObjectNameInformation,
-        ObjectTypeInformation,
-        ObjectTypesInformation,
-        ObjectHandleFlagInformation,
-        ObjectSessionInformation,
-        ObjectSessionObjectInformation
-    }
-
-    /// <summary>
-    /// Structure to return Object Name
-    /// </summary>
-    [StructLayout(LayoutKind.Sequential)]
-    public class ObjectNameInformation
-    {
-        public UnicodeStringOut Name;
-    }
-
-    /// <summary>
-    /// Structure to return Object basic information
-    /// </summary>
-    [StructLayout(LayoutKind.Sequential)]
-    public struct ObjectBasicInformation
-    {
-        public AttributeFlags Attributes;
-        public uint DesiredAccess;
-        public int HandleCount;
-        public int ReferenceCount;
-        public int PagedPoolUsage;
-        public int NonPagedPoolUsage;
-        public int Reserved0;
-        public int Reserved1;
-        public int Reserved2;
-        public int NameInformationLength;
-        public int TypeInformationLength;
-        public int SecurityDescriptorLength;
-        public LargeIntegerStruct CreationTime;
-    }
-
-    [StructLayout(LayoutKind.Sequential)]
-    public struct ObjectHandleInformation
-    {
-        [MarshalAs(UnmanagedType.U1)]
-        public bool Inherit;
-        [MarshalAs(UnmanagedType.U1)]
-        public bool ProtectFromClose;
-    }
-
-    /// <summary>
-    /// Type of kernel pool used for object allocation
-    /// </summary>
-    public enum PoolType
-    {
-        NonPagedPool,
-        PagedPool,
-        NonPagedPoolMustSucceed,
-        DontUseThisType,
-        NonPagedPoolCacheAligned,
-        PagedPoolCacheAligned,
-        NonPagedPoolCacheAlignedMustS
-    }
-
-    public static partial class NtSystemCalls
-    {
-        [DllImport("ntdll.dll")]
-        public static extern NtStatus NtClose(IntPtr handle);
-
-        [DllImport("ntdll.dll")]
-        public static extern NtStatus NtDuplicateObject(
-          SafeHandle SourceProcessHandle,
-          IntPtr SourceHandle,
-          SafeHandle TargetProcessHandle,
-          out IntPtr TargetHandle,
-          AccessMask DesiredAccess,
-          AttributeFlags HandleAttributes,
-          DuplicateObjectOptions Options
-        );
-
-        [DllImport("ntdll.dll")]
-        public static extern NtStatus NtQueryObject(
-            SafeHandle ObjectHandle,
-            ObjectInformationClass ObjectInformationClass,
-            SafeBuffer ObjectInformation,
-            int ObjectInformationLength,
-            out int ReturnLength
-        );
-
-        [DllImport("ntdll.dll")]
-        public static extern NtStatus NtSetInformationObject(
-            SafeHandle ObjectHandle,
-            ObjectInformationClass ObjectInformationClass,
-            SafeBuffer ObjectInformation,
-            int ObjectInformationLength
-        );
-
-        [DllImport("ntdll.dll")]
-        public static extern NtStatus NtQuerySecurityObject(
-            SafeHandle Handle,
-            SecurityInformation SecurityInformation,
-            [Out] byte[] SecurityDescriptor,
-            int SecurityDescriptorLength,
-            out int ReturnLength
-            );
-
-        [DllImport("ntdll.dll")]
-        public static extern NtStatus NtSetSecurityObject(
-            SafeHandle Handle,
-            SecurityInformation SecurityInformation,
-            [In] byte[] SecurityDescriptor
-        );
-
-        [DllImport("ntdll.dll")]
-        public static extern NtStatus NtMakeTemporaryObject(SafeKernelObjectHandle Handle);
-
-        [DllImport("ntdll.dll")]
-        public static extern NtStatus NtMakePermanentObject(SafeKernelObjectHandle Handle);
-
-        [DllImport("ntdll.dll")]
-        public static extern NtStatus NtCompareObjects(SafeKernelObjectHandle Object1, SafeKernelObjectHandle Object2);
-    }
-#pragma warning restore 1591
-
     /// <summary>
     /// Base class for all NtObject types we handle
     /// </summary>
     public abstract class NtObject : IDisposable
     {
+        #region Private Members
         private ObjectBasicInformation _basic_information;
-        private ulong _address;
 
         /// <summary>
         /// Get the basic information for the object.
@@ -219,20 +31,65 @@ namespace NtApiDotNet
         /// <returns>The basic information</returns>
         private static ObjectBasicInformation QueryBasicInformation(SafeKernelObjectHandle handle)
         {
+            var basic_info = QueryObjectFixed<ObjectBasicInformation>(handle, 
+                ObjectInformationClass.ObjectBasicInformation, false);
+            if (basic_info.IsSuccess)
+                return basic_info.Result;
+            return new ObjectBasicInformation();
+        }
 
-            try
+        private static NtResult<T> QueryObjectFixed<T>(SafeKernelObjectHandle handle,
+            ObjectInformationClass object_info, bool throw_on_error) where T : new()
+        {
+            using (var buffer = new SafeStructureInOutBuffer<T>())
             {
-                using (var basic_info = QueryObject<ObjectBasicInformation>(handle, ObjectInformationClass.ObjectBasicInformation))
-                {
-                    return basic_info.Result;
-                }
-            }
-            catch
-            {
-                return new ObjectBasicInformation();
+                return NtSystemCalls.NtQueryObject(handle, object_info, buffer, 
+                    buffer.Length, out int return_length).CreateResult(throw_on_error, () => buffer.Result);
             }
         }
 
+        private static NtResult<SafeStructureInOutBuffer<T>> QueryObject<T>(SafeKernelObjectHandle handle,
+            ObjectInformationClass object_info, bool throw_on_error) where T : new()
+        {
+            SafeStructureInOutBuffer<T> ret = null;
+            NtStatus status = NtStatus.STATUS_BUFFER_TOO_SMALL;
+            try
+            {
+                status = NtSystemCalls.NtQueryObject(handle, object_info, SafeHGlobalBuffer.Null, 0, out int return_length);
+                if ((status != NtStatus.STATUS_BUFFER_TOO_SMALL) && (status != NtStatus.STATUS_INFO_LENGTH_MISMATCH))
+                    return status.CreateResultFromError<SafeStructureInOutBuffer<T>>(throw_on_error);
+
+                if (return_length == 0)
+                    ret = new SafeStructureInOutBuffer<T>();
+                else
+                    ret = new SafeStructureInOutBuffer<T>(return_length, false);
+                status = NtSystemCalls.NtQueryObject(handle, object_info, ret, ret.Length, out return_length);
+                return status.CreateResult(throw_on_error, () => ret);
+            }
+            finally
+            {
+                if (ret != null && !status.IsSuccess())
+                {
+                    ret.Close();
+                    ret = null;
+                }
+            }
+        }
+
+        private static string GetName(SafeKernelObjectHandle handle)
+        {
+            // TODO: Might need to do this async for file objects, they have a habit of sticking.
+            using (var name = QueryObject<ObjectNameInformation>(handle, ObjectInformationClass.ObjectNameInformation, false))
+            {
+                if (name.IsSuccess)
+                    return name.Result.Result.Name.ToString();
+            }
+            return string.Empty;
+        }
+
+        #endregion
+
+        #region Constructors
         /// <summary>
         /// Base constructor
         /// </summary>
@@ -241,6 +98,9 @@ namespace NtApiDotNet
         {
             SetHandle(handle, true);
         }
+        #endregion
+
+        #region Internal Members
 
         internal void SetHandle(SafeKernelObjectHandle handle, bool query_basic_info)
         {
@@ -258,76 +118,6 @@ namespace NtApiDotNet
                     // Shouldn't fail here but just in case.
                 }
             }
-        }
-
-        private static SafeStructureInOutBuffer<T> QueryObject<T>(SafeKernelObjectHandle handle, ObjectInformationClass object_info) where T : new()
-        {
-            SafeStructureInOutBuffer<T> ret = null;
-            NtStatus status = NtStatus.STATUS_BUFFER_TOO_SMALL;
-            try
-            {
-                int return_length;
-                status = NtSystemCalls.NtQueryObject(handle, object_info, SafeHGlobalBuffer.Null, 0, out return_length);
-                if ((status != NtStatus.STATUS_BUFFER_TOO_SMALL) && (status != NtStatus.STATUS_INFO_LENGTH_MISMATCH))
-                    status.ToNtException();
-                if (return_length == 0)
-                    ret = new SafeStructureInOutBuffer<T>();
-                else
-                    ret = new SafeStructureInOutBuffer<T>(return_length, false);
-                status = NtSystemCalls.NtQueryObject(handle, object_info, ret, ret.Length, out return_length);
-                status.ToNtException();
-            }
-            finally
-            {
-                if (ret != null && !status.IsSuccess())
-                {
-                    ret.Close();
-                    ret = null;
-                }
-            }
-            return ret;
-        }
-
-        /// <summary>
-        /// Duplicate a handle to a new handle, potentially in a different process.
-        /// </summary>
-        /// <param name="flags">Attribute flags for new handle</param>
-        /// <param name="src_handle">The source handle to duplicate</param>
-        /// <param name="src_process">The source process to duplicate from</param>
-        /// <param name="dest_process">The desination process for the handle</param>
-        /// <param name="options">Duplicate handle options</param>
-        /// <param name="access_rights">The access rights for the new handle</param>
-        /// <param name="throw_on_error">True to throw an exception on error.</param>
-        /// <returns>The NT status code and object result.</returns>
-        public static NtResult<IntPtr> DuplicateHandle(
-            NtProcess src_process, IntPtr src_handle,
-            NtProcess dest_process, AccessMask access_rights,
-            AttributeFlags flags, DuplicateObjectOptions options,
-            bool throw_on_error)
-        {
-            return NtSystemCalls.NtDuplicateObject(src_process.Handle, src_handle,
-                dest_process.Handle, out IntPtr external_handle, access_rights, flags,
-                options).CreateResult(throw_on_error, () => external_handle);
-        }
-
-        /// <summary>
-        /// Duplicate a handle to a new handle, potentially in a different process.
-        /// </summary>
-        /// <param name="flags">Attribute flags for new handle</param>
-        /// <param name="src_handle">The source handle to duplicate</param>
-        /// <param name="src_process">The source process to duplicate from</param>
-        /// <param name="dest_process">The desination process for the handle</param>
-        /// <param name="options">Duplicate handle options</param>
-        /// <param name="access_rights">The access rights for the new handle</param>
-        /// <returns>The NT status code and object result.</returns>
-        public static IntPtr DuplicateHandle(
-            NtProcess src_process, IntPtr src_handle,
-            NtProcess dest_process, AccessMask access_rights,
-            AttributeFlags flags, DuplicateObjectOptions options)
-        {
-            return DuplicateHandle(src_process, src_handle,
-                dest_process, access_rights, flags,
-                options, true).Result;
         }
 
         /// <summary>
@@ -394,6 +184,19 @@ namespace NtApiDotNet
         }
 
         /// <summary>
+        /// Duplicate a handle from and to the current process to a new handle with the same access rights.
+        /// </summary>
+        /// <param name="src_handle">The source handle to duplicate</param>
+        /// <param name="throw_on_error">True to throw on error.</param>
+        /// <returns>The duplicated handle.</returns>
+        internal static NtResult<SafeKernelObjectHandle> DuplicateHandle(
+            SafeKernelObjectHandle src_handle, bool throw_on_error)
+        {
+            return DuplicateHandle(NtProcess.Current, src_handle, NtProcess.Current, 0, 0,
+                DuplicateObjectOptions.SameAccess | DuplicateObjectOptions.SameAttributes, throw_on_error);
+        }
+
+        /// <summary>
         /// Duplicate a handle from and to the current process to a new handle with new access rights.
         /// </summary>
         /// <param name="src_handle">The source handle to duplicate</param>
@@ -404,302 +207,16 @@ namespace NtApiDotNet
             return DuplicateHandle(src_handle, NtProcess.Current, access_rights, DuplicateObjectOptions.None);
         }
 
-        /// <summary>
-        /// Duplicate object.
-        /// </summary>
-        /// <param name="access_rights">Access rights to duplicate with.</param>
-        /// <param name="flags">Attribute flags.</param>
-        /// <param name="options">Duplicate options</param>
-        /// <param name="throw_on_error">True to throw an exception on error.</param>
-        /// <returns>The duplicated object.</returns>
-        public abstract NtResult<NtObject> DuplicateObject(AccessMask access_rights, AttributeFlags flags, DuplicateObjectOptions options, bool throw_on_error);
+        #endregion
 
-        /// <summary>
-        /// Duplicate object with specific access rights.
-        /// </summary>
-        /// <param name="access_rights">Access rights to duplicate with.</param>
-        /// <returns>The duplicated object.</returns>
-        public NtObject DuplicateObject(AccessMask access_rights)
-        {
-            return DuplicateObject(access_rights, AttributeFlags.None, DuplicateObjectOptions.None, true).Result;
-        }
+        #region Static Methods
 
-        /// <summary>
-        /// Duplicate object with sane access rights.
-        /// </summary>
-        /// <returns>The duplicated object.</returns>
-        public NtObject DuplicateObject()
-        {
-            return DuplicateObject(0, AttributeFlags.None, DuplicateObjectOptions.SameAccess, true).Result;
-        }
-
-        private static string GetName(SafeKernelObjectHandle handle)
-        {
-            try
-            {
-                // TODO: Might need to do this async for file objects, they have a habit of sticking.
-                using (var name = QueryObject<ObjectNameInformation>(handle, ObjectInformationClass.ObjectNameInformation))
-                {
-                    return name.Result.Name.ToString();
-                }
-            }
-            catch
-            {
-                return String.Empty;
-            }
-        }
-
-        /// <summary>
-        /// Duplicate the object handle as a WaitHandle.
-        /// </summary>
-        /// <returns>The wait handle.</returns>
-        public NtWaitHandle DuplicateAsWaitHandle()
-        {
-            return new NtWaitHandle(this);
-        }
-
-        /// <summary>
-        /// Get full path to the object
-        /// </summary>
-        public virtual string FullPath
-        {
-            get
-            {
-                return GetName(Handle);
-            }
-        }
-
-        /// <summary>
-        /// Get the granted access as an unsigned integer
-        /// </summary>
-        public AccessMask GrantedAccessMask
-        {
-            get
-            {
-                return _basic_information.DesiredAccess;
-            }
-        }
-
-        /// <summary>
-        /// Check if access is granted to a set of rights
-        /// </summary>
-        /// <param name="access">The access rights to check</param>
-        /// <returns>True if all the access rights are granted</returns>
-        public bool IsAccessMaskGranted(AccessMask access)
-        {
-            return GrantedAccessMask.IsAllAccessGranted(access);
-        }
-
-        /// <summary>
-        /// Get security descriptor as a byte array
-        /// </summary>
-        /// <param name="security_information">What parts of the security descriptor to retrieve</param>
-        /// <returns>The security descriptor</returns>
-        public byte[] GetSecurityDescriptorBytes(SecurityInformation security_information)
-        {
-            return GetSecurityDescriptorBytes(security_information, true).Result;
-        }
-
-
-        /// <summary>
-        /// Get security descriptor as a byte array
-        /// </summary>
-        /// <param name="security_information">What parts of the security descriptor to retrieve</param>
-        /// <param name="throw_on_error">True to throw on error.</param>
-        /// <return>The NT status result and security descriptor.</return>
-        public NtResult<byte[]> GetSecurityDescriptorBytes(SecurityInformation security_information, bool throw_on_error)
-        {
-            // Just do a check here, no point checking if ReadControl not available.
-            if (!IsAccessMaskGranted(GenericAccessRights.ReadControl))
-            {
-                return NtStatus.STATUS_ACCESS_DENIED.CreateResultFromError<byte[]>(throw_on_error);
-            }
-
-            int return_length;
-            NtStatus status = NtSystemCalls.NtQuerySecurityObject(Handle, security_information, null, 0, out return_length);
-            if (status != NtStatus.STATUS_BUFFER_TOO_SMALL)
-            {
-                return status.CreateResult(throw_on_error, () => new byte[0]);
-            }
-            byte[] buffer = new byte[return_length];
-            return NtSystemCalls.NtQuerySecurityObject(Handle, security_information, buffer,
-                buffer.Length, out return_length).CreateResult(throw_on_error, () => buffer);
-        }
-
-
-        /// <summary>
-        /// Get security descriptor as a byte array
-        /// </summary>
-        /// <returns>Returns an array of bytes for the security descriptor</returns>
-        public byte[] GetSecurityDescriptorBytes()
-        {
-            return GetSecurityDescriptorBytes(SecurityInformation.AllBasic);
-        }
-
-        /// <summary>
-        /// Set the object's security descriptor
-        /// </summary>
-        /// <param name="security_desc">The security descriptor to set.</param>
-        /// <param name="security_information">What parts of the security descriptor to set</param>
-        public void SetSecurityDescriptor(byte[] security_desc, SecurityInformation security_information)
-        {
-            SetSecurityDescriptor(security_desc, security_information, true);
-        }
-
-        /// <summary>
-        /// Set the object's security descriptor
-        /// </summary>
-        /// <param name="security_desc">The security descriptor to set.</param>
-        /// <param name="security_information">What parts of the security descriptor to set</param>
-        /// <param name="throw_on_error">True to throw on error.</param>
-        /// <return>The NT status result.</return>
-        public NtStatus SetSecurityDescriptor(byte[] security_desc, SecurityInformation security_information, bool throw_on_error)
-        {
-            return NtSystemCalls.NtSetSecurityObject(Handle, security_information, security_desc).ToNtException(throw_on_error);
-        }
-
-        /// <summary>
-        /// Set the object's security descriptor
-        /// </summary>
-        /// <param name="security_desc">The security descriptor to set.</param>
-        /// <param name="security_information">What parts of the security descriptor to set</param>
-        public void SetSecurityDescriptor(SecurityDescriptor security_desc, SecurityInformation security_information)
-        {
-            SetSecurityDescriptor(security_desc.ToByteArray(), security_information);
-        }
-
-        /// <summary>
-        /// Get the security descriptor specifying which parts to retrieve
-        /// </summary>
-        /// <param name="security_information">What parts of the security descriptor to retrieve</param>
-        /// <returns>The security descriptor</returns>
-        public SecurityDescriptor GetSecurityDescriptor(SecurityInformation security_information)
-        {
-            return new SecurityDescriptor(GetSecurityDescriptorBytes(security_information));
-        }
-
-        /// <summary>
-        /// Get the security descriptor specifying which parts to retrieve
-        /// </summary>
-        /// <param name="security_information">What parts of the security descriptor to retrieve</param>
-        /// <param name="throw_on_error">True to throw on error.</param>
-        /// <returns>The security descriptor</returns>
-        public NtResult<SecurityDescriptor> GetSecurityDescriptor(SecurityInformation security_information, bool throw_on_error)
-        {
-            return GetSecurityDescriptorBytes(security_information, throw_on_error).Map(sd => new SecurityDescriptor(sd));
-        }
-
-        /// <summary>
-        /// Get the security descriptor, with Dacl, Owner, Group and Label
-        /// </summary>
-        public SecurityDescriptor SecurityDescriptor
-        {
-            get
-            {
-                return GetSecurityDescriptor(SecurityInformation.AllBasic);
-            }
-        }
-
-        /// <summary>
-        /// Get the security descriptor as an SDDL string
-        /// </summary>
-        /// <returns>The security descriptor as an SDDL string</returns>
-        public string GetSddl()
-        {
-            return SecurityDescriptor.ToSddl();
-        }
-
-        /// <summary>
-        /// Get the security descriptor as an SDDL string
-        /// </summary>
-        /// <returns>The security descriptor as an SDDL string</returns>
-        public string Sddl
-        {
-            get { return GetSddl(); }
-        }
-
-        /// <summary>
-        /// The low-level handle to the object.
-        /// </summary>
-        public SafeKernelObjectHandle Handle { get; private set; }
-
-        /// <summary>
-        /// Make the object a temporary object
-        /// </summary>
-        public void MakeTemporary()
-        {
-            NtSystemCalls.NtMakeTemporaryObject(Handle).ToNtException();
-        }
-
-        /// <summary>
-        /// Make the object a permanent object
-        /// </summary>
-        public void MakePermanent()
-        {
-            NtSystemCalls.NtMakePermanentObject(Handle).ToNtException();
-        }
-
-        /// <summary>
-        /// Wait on the object to become signalled
-        /// </summary>
-        /// <param name="alertable">True to make the wait alertable</param>
-        /// <param name="timeout">The time out</param>
-        /// <returns>The success status of the wait, such as STATUS_SUCCESS or STATUS_TIMEOUT</returns>
-        /// <exception cref="NtException">Thrown on error</exception>
-        public NtStatus Wait(bool alertable, NtWaitTimeout timeout)
-        {
-            return NtWait.Wait(this, alertable, timeout);
-        }
-
-        /// <summary>
-        /// Wait on the object to become signalled
-        /// </summary>
-        /// <param name="timeout">The time out</param>
-        /// <returns>The success status of the wait, such as STATUS_SUCCESS or STATUS_TIMEOUT</returns>
-        /// <exception cref="NtException">Thrown on error</exception>
-        public NtStatus Wait(NtWaitTimeout timeout)
-        {
-            return Wait(false, timeout);
-        }
-
-        /// <summary>
-        /// Wait on the object to become signalled
-        /// </summary>
-        /// <param name="alertable">True to make the wait alertable</param>
-        /// <param name="timeout_sec">The time out in seconds</param>
-        /// <returns>The success status of the wait, such as STATUS_SUCCESS or STATUS_TIMEOUT</returns>
-        /// <exception cref="NtException">Thrown on error</exception>
-        public NtStatus Wait(bool alertable, int timeout_sec)
-        {
-            return Wait(alertable, NtWaitTimeout.FromSeconds(timeout_sec));
-        }
-
-        /// <summary>
-        /// Wait on the object to become signalled
-        /// </summary>
-        /// <param name="timeout_sec">The time out in seconds</param>
-        /// <returns>The success status of the wait, such as STATUS_SUCCESS or STATUS_TIMEOUT</returns>
-        /// <exception cref="NtException">Thrown on error</exception>
-        public NtStatus Wait(int timeout_sec)
-        {
-            return Wait(false, timeout_sec);
-        }
-
-        /// <summary>
-        /// Wait on the object to become signalled for an infinite time.
-        /// </summary>
-        /// <returns>The success status of the wait, such as STATUS_SUCCESS or STATUS_TIMEOUT</returns>
-        /// <exception cref="NtException">Thrown on error</exception>
-        public NtStatus Wait()
-        {
-            return Wait(false, NtWaitTimeout.Infinite);
-        }
 
         /// <summary>
         /// Indicates whether a specific type of kernel object can be opened.
         /// </summary>
         /// <param name="typename">The kernel typename to check.</param>
-        /// <returns>True if this type of object can be opened.</returns>        
+        /// <returns>True if this type of object can be opened.</returns>
         public static bool CanOpenType(string typename)
         {
             NtType type = NtType.GetTypeByName(typename, false);
@@ -722,7 +239,7 @@ namespace NtApiDotNet
         /// <param name="throw_on_error">True to throw on error.</param>
         /// <returns>The opened object.</returns>
         /// <exception cref="NtException">Thrown if an error occurred opening the object.</exception>
-        public static NtResult<NtObject> OpenWithType(string typename, string path, NtObject root, 
+        public static NtResult<NtObject> OpenWithType(string typename, string path, NtObject root,
             AttributeFlags attributes, AccessMask access, SecurityQualityOfService security_quality_of_service, bool throw_on_error)
         {
             using (var obj_attr = new ObjectAttributes(path, attributes, root, security_quality_of_service, null))
@@ -792,27 +309,378 @@ namespace NtApiDotNet
         }
 
         /// <summary>
-        /// Get the NT type name for this object.
+        /// Close a handle in another process.
         /// </summary>
-        /// <returns>The NT type name.</returns>
-        public string NtTypeName
+        /// <param name="handle">The source handle to close.</param>
+        /// <param name="process">The source process containing the handle to close.</param>
+        /// <param name="throw_on_error">True to throw an exception on error.</param>
+        /// <returns>The NT status code.</returns>
+        public static NtStatus CloseHandle(
+            NtProcess process, IntPtr handle,
+            bool throw_on_error)
         {
-            get
+            return NtSystemCalls.NtDuplicateObject(process.Handle, handle,
+                IntPtr.Zero, IntPtr.Zero, 0, 0,
+                 DuplicateObjectOptions.CloseSource).ToNtException(throw_on_error);
+        }
+
+        /// <summary>
+        /// Close a handle in another process.
+        /// </summary>
+        /// <param name="handle">The source handle to close.</param>
+        /// <param name="process">The source process containing the handle to close.</param>
+        public static void CloseHandle(
+            NtProcess process, IntPtr handle)
+        {
+            CloseHandle(process, handle, true);
+        }
+
+        /// <summary>
+        /// Close a handle in another process by PID.
+        /// </summary>
+        /// <param name="handle">The source handle to close.</param>
+        /// <param name="pid">The source process ID containing the handle to close.</param>
+        /// <param name="throw_on_error">True to throw an exception on error.</param>
+        /// <returns>The NT status code.</returns>
+        public static NtStatus CloseHandle(
+            int pid, IntPtr handle,
+            bool throw_on_error)
+        {
+            using (var proc = NtProcess.Open(pid, ProcessAccessRights.DupHandle, throw_on_error))
             {
-                return Handle.NtTypeName;
+                if (!proc.IsSuccess)
+                {
+                    return proc.Status;
+                }
+
+                return CloseHandle(proc.Result, handle, throw_on_error);
             }
         }
 
         /// <summary>
-        /// Get the NtType for this object.
+        /// Close a handle in another process by PID.
         /// </summary>
-        /// <returns>The NtType for the type name</returns>
-        public NtType NtType
+        /// <param name="handle">The source handle to close.</param>
+        /// <param name="pid">The source process ID containing the handle to close.</param>
+        public static void CloseHandle(
+            int pid, IntPtr handle)
         {
-            get
+            CloseHandle(pid, handle, true);
+        }
+
+
+        /// <summary>
+        /// Close a handle.
+        /// </summary>
+        /// <param name="handle">The handle to close.</param>
+        /// <returns>The NT status code.</returns>
+        /// <remarks>This ensures the handle can't be 0 before calling NtClose.</remarks>
+        public static NtStatus CloseHandle(IntPtr handle)
+        {
+            if (handle == IntPtr.Zero)
+                return NtStatus.STATUS_INVALID_HANDLE;
+            return NtSystemCalls.NtClose(handle);
+        }
+
+        /// <summary>
+        /// Duplicate a handle to a new handle, potentially in a different process.
+        /// </summary>
+        /// <param name="flags">Attribute flags for new handle</param>
+        /// <param name="src_handle">The source handle to duplicate</param>
+        /// <param name="src_process">The source process to duplicate from</param>
+        /// <param name="dest_process">The desination process for the handle</param>
+        /// <param name="options">Duplicate handle options</param>
+        /// <param name="access_rights">The access rights for the new handle</param>
+        /// <param name="throw_on_error">True to throw an exception on error.</param>
+        /// <returns>The NT status code and object result.</returns>
+        public static NtResult<IntPtr> DuplicateHandle(
+            NtProcess src_process, IntPtr src_handle,
+            NtProcess dest_process, AccessMask access_rights,
+            AttributeFlags flags, DuplicateObjectOptions options,
+            bool throw_on_error)
+        {
+            return NtSystemCalls.NtDuplicateObject(src_process.Handle, src_handle,
+                dest_process.Handle, out IntPtr external_handle, access_rights, flags,
+                options).CreateResult(throw_on_error, () => external_handle);
+        }
+
+        /// <summary>
+        /// Duplicate a handle to a new handle, potentially in a different process.
+        /// </summary>
+        /// <param name="flags">Attribute flags for new handle</param>
+        /// <param name="src_handle">The source handle to duplicate</param>
+        /// <param name="src_process">The source process to duplicate from</param>
+        /// <param name="dest_process">The desination process for the handle</param>
+        /// <param name="options">Duplicate handle options</param>
+        /// <param name="access_rights">The access rights for the new handle</param>
+        /// <returns>The NT status code and object result.</returns>
+        public static IntPtr DuplicateHandle(
+            NtProcess src_process, IntPtr src_handle,
+            NtProcess dest_process, AccessMask access_rights,
+            AttributeFlags flags, DuplicateObjectOptions options)
+        {
+            return DuplicateHandle(src_process, src_handle,
+                dest_process, access_rights, flags,
+                options, true).Result;
+        }
+
+        #endregion
+
+        #region Public Methods
+        /// <summary>
+        /// Duplicate object.
+        /// </summary>
+        /// <param name="access_rights">Access rights to duplicate with.</param>
+        /// <param name="flags">Attribute flags.</param>
+        /// <param name="options">Duplicate options</param>
+        /// <param name="throw_on_error">True to throw an exception on error.</param>
+        /// <returns>The duplicated object.</returns>
+        public abstract NtResult<NtObject> DuplicateObject(AccessMask access_rights, AttributeFlags flags, DuplicateObjectOptions options, bool throw_on_error);
+
+        /// <summary>
+        /// Duplicate object.
+        /// </summary>
+        /// <param name="access_rights">Access rights to duplicate with.</param>
+        /// <param name="flags">Attribute flags.</param>
+        /// <param name="options">Duplicate options</param>
+        /// <returns>The duplicated object.</returns>
+        public NtObject DuplicateObject(AccessMask access_rights, AttributeFlags flags, DuplicateObjectOptions options)
+        {
+            return DuplicateObject(access_rights, flags, options, true).Result;
+        }
+
+        /// <summary>
+        /// Duplicate object with specific access rights.
+        /// </summary>
+        /// <param name="access_rights">Access rights to duplicate with.</param>
+        /// <returns>The duplicated object.</returns>
+        public NtObject DuplicateObject(AccessMask access_rights)
+        {
+            return DuplicateObject(access_rights, AttributeFlags.None, DuplicateObjectOptions.None, true).Result;
+        }
+
+        /// <summary>
+        /// Duplicate object with same access rights.
+        /// </summary>
+        /// <returns>The duplicated object.</returns>
+        public NtObject DuplicateObject()
+        {
+            return DuplicateObject(0, AttributeFlags.None, DuplicateObjectOptions.SameAccess, true).Result;
+        }
+
+        /// <summary>
+        /// Duplicate the object handle as a WaitHandle.
+        /// </summary>
+        /// <returns>The wait handle.</returns>
+        public NtWaitHandle DuplicateAsWaitHandle()
+        {
+            return new NtWaitHandle(this);
+        }
+
+        /// <summary>
+        /// Check if access is granted to a set of rights
+        /// </summary>
+        /// <param name="access">The access rights to check</param>
+        /// <returns>True if all the access rights are granted</returns>
+        public bool IsAccessMaskGranted(AccessMask access)
+        {
+            return GrantedAccessMask.IsAllAccessGranted(access);
+        }
+
+        /// <summary>
+        /// Get security descriptor as a byte array
+        /// </summary>
+        /// <param name="security_information">What parts of the security descriptor to retrieve</param>
+        /// <returns>The security descriptor</returns>
+        public byte[] GetSecurityDescriptorBytes(SecurityInformation security_information)
+        {
+            return GetSecurityDescriptorBytes(security_information, true).Result;
+        }
+
+        /// <summary>
+        /// Get security descriptor as a byte array
+        /// </summary>
+        /// <param name="security_information">What parts of the security descriptor to retrieve</param>
+        /// <param name="throw_on_error">True to throw on error.</param>
+        /// <return>The NT status result and security descriptor.</return>
+        public NtResult<byte[]> GetSecurityDescriptorBytes(SecurityInformation security_information, bool throw_on_error)
+        {
+            using (var buffer = NtSecurity.GetSecurityDescriptor(Handle, security_information, throw_on_error))
             {
-                return NtType.GetTypeByName(NtTypeName, true);
+                return buffer.Map(b => b.ToArray());
             }
+        }
+
+        /// <summary>
+        /// Get security descriptor as a byte array
+        /// </summary>
+        /// <returns>Returns an array of bytes for the security descriptor</returns>
+        public byte[] GetSecurityDescriptorBytes()
+        {
+            return GetSecurityDescriptorBytes(SecurityInformation.AllBasic);
+        }
+
+        /// <summary>
+        /// Set the object's security descriptor
+        /// </summary>
+        /// <param name="security_desc">The security descriptor to set.</param>
+        /// <param name="security_information">What parts of the security descriptor to set</param>
+        /// <param name="throw_on_error">True to throw on error.</param>
+        /// <return>The NT status result.</return>
+        public NtStatus SetSecurityDescriptor(byte[] security_desc, SecurityInformation security_information, bool throw_on_error)
+        {
+            using (var buffer = security_desc.ToBuffer())
+            {
+                return NtSecurity.SetSecurityDescriptor(Handle, buffer, security_information, throw_on_error);
+            }
+        }
+
+        /// <summary>
+        /// Set the object's security descriptor
+        /// </summary>
+        /// <param name="security_desc">The security descriptor to set.</param>
+        /// <param name="security_information">What parts of the security descriptor to set</param>
+        public void SetSecurityDescriptor(byte[] security_desc, SecurityInformation security_information)
+        {
+            SetSecurityDescriptor(security_desc, security_information, true);
+        }
+
+        /// <summary>
+        /// Set the object's security descriptor
+        /// </summary>
+        /// <param name="security_desc">The security descriptor to set.</param>
+        /// <param name="security_information">What parts of the security descriptor to set</param>
+        public void SetSecurityDescriptor(SecurityDescriptor security_desc, SecurityInformation security_information)
+        {
+            SetSecurityDescriptor(security_desc, security_information, true);
+        }
+
+        /// <summary>
+        /// Set the object's security descriptor
+        /// </summary>
+        /// <param name="security_desc">The security descriptor to set.</param>
+        /// <param name="security_information">What parts of the security descriptor to set</param>
+        /// <param name="throw_on_error">True to throw on error.</param>
+        /// <returns>The NT status code.</returns>
+        public NtStatus SetSecurityDescriptor(SecurityDescriptor security_desc, SecurityInformation security_information, bool throw_on_error)
+        {
+            using (var buffer = security_desc.ToSafeBuffer(true))
+            {
+                return NtSecurity.SetSecurityDescriptor(Handle, buffer, security_information, throw_on_error);
+            }
+        }
+
+        /// <summary>
+        /// Get the security descriptor specifying which parts to retrieve
+        /// </summary>
+        /// <param name="security_information">What parts of the security descriptor to retrieve</param>
+        /// <returns>The security descriptor</returns>
+        public SecurityDescriptor GetSecurityDescriptor(SecurityInformation security_information)
+        {
+            return GetSecurityDescriptor(security_information, true).Result;
+        }
+
+        /// <summary>
+        /// Get the security descriptor specifying which parts to retrieve
+        /// </summary>
+        /// <param name="security_information">What parts of the security descriptor to retrieve</param>
+        /// <param name="throw_on_error">True to throw on error.</param>
+        /// <returns>The security descriptor</returns>
+        public NtResult<SecurityDescriptor> GetSecurityDescriptor(SecurityInformation security_information, bool throw_on_error)
+        {
+            using (var buffer = NtSecurity.GetSecurityDescriptor(Handle, security_information, throw_on_error))
+            {
+                if (!buffer.IsSuccess)
+                    return buffer.Cast<SecurityDescriptor>();
+
+                return SecurityDescriptor.Parse(buffer.Result, NtType, IsContainer, throw_on_error);
+            }
+        }
+
+        /// <summary>
+        /// Get the security descriptor as an SDDL string
+        /// </summary>
+        /// <returns>The security descriptor as an SDDL string</returns>
+        public string GetSddl() => SecurityDescriptor.ToSddl();
+
+        /// <summary>
+        /// Make the object a temporary object
+        /// </summary>
+        /// <param name="throw_on_error">True to throw on error.</param>
+        /// <returns>The NT status code.</returns>
+        public NtStatus MakeTemporary(bool throw_on_error) => NtSystemCalls.NtMakeTemporaryObject(Handle).ToNtException(throw_on_error);
+
+        /// <summary>
+        /// Make the object a temporary object
+        /// </summary>
+        public void MakeTemporary() => MakeTemporary(true);
+
+        /// <summary>
+        /// Make the object a permanent object
+        /// </summary>
+        /// <param name="throw_on_error">True to throw on error.</param>
+        /// <returns>The NT status code.</returns>
+        public NtStatus MakePermanent(bool throw_on_error) => NtSystemCalls.NtMakePermanentObject(Handle).ToNtException(throw_on_error);
+
+        /// <summary>
+        /// Make the object a permanent object
+        /// </summary>
+        public void MakePermanent() => MakePermanent(true);
+
+        /// <summary>
+        /// Wait on the object to become signaled
+        /// </summary>
+        /// <param name="alertable">True to make the wait alertable</param>
+        /// <param name="timeout">The time out</param>
+        /// <returns>The success status of the wait, such as STATUS_SUCCESS or STATUS_TIMEOUT</returns>
+        /// <exception cref="NtException">Thrown on error</exception>
+        public NtStatus Wait(bool alertable, NtWaitTimeout timeout)
+        {
+            return NtWait.Wait(this, alertable, timeout);
+        }
+
+        /// <summary>
+        /// Wait on the object to become signaled
+        /// </summary>
+        /// <param name="timeout">The time out</param>
+        /// <returns>The success status of the wait, such as STATUS_SUCCESS or STATUS_TIMEOUT</returns>
+        /// <exception cref="NtException">Thrown on error</exception>
+        public NtStatus Wait(NtWaitTimeout timeout)
+        {
+            return Wait(false, timeout);
+        }
+
+        /// <summary>
+        /// Wait on the object to become signaled
+        /// </summary>
+        /// <param name="alertable">True to make the wait alertable</param>
+        /// <param name="timeout_sec">The time out in seconds</param>
+        /// <returns>The success status of the wait, such as STATUS_SUCCESS or STATUS_TIMEOUT</returns>
+        /// <exception cref="NtException">Thrown on error</exception>
+        public NtStatus Wait(bool alertable, int timeout_sec)
+        {
+            return Wait(alertable, NtWaitTimeout.FromSeconds(timeout_sec));
+        }
+
+        /// <summary>
+        /// Wait on the object to become signaled
+        /// </summary>
+        /// <param name="timeout_sec">The time out in seconds</param>
+        /// <returns>The success status of the wait, such as STATUS_SUCCESS or STATUS_TIMEOUT</returns>
+        /// <exception cref="NtException">Thrown on error</exception>
+        public NtStatus Wait(int timeout_sec)
+        {
+            return Wait(false, timeout_sec);
+        }
+
+        /// <summary>
+        /// Wait on the object to become signaled for an infinite time.
+        /// </summary>
+        /// <returns>The success status of the wait, such as STATUS_SUCCESS or STATUS_TIMEOUT</returns>
+        /// <exception cref="NtException">Thrown on error</exception>
+        public NtStatus Wait()
+        {
+            return Wait(false, NtWaitTimeout.Infinite);
         }
 
         /// <summary>
@@ -835,24 +703,40 @@ namespace NtApiDotNet
         }
 
         /// <summary>
-        /// Get the name of the object
+        /// Check if this object is exactly the same as another using NtCompareObject.
         /// </summary>
-        public string Name
+        /// <param name="obj">The object to compare against.</param>
+        /// <returns>True if this is the same object.</returns>
+        /// <exception cref="NtException">Thrown on error.</exception>
+        /// <remarks>This is only supported on Windows 10 and above. For one which works on everything use SameObject.</remarks>
+        public bool CompareObject(NtObject obj)
         {
-            get
+            NtStatus status = NtSystemCalls.NtCompareObjects(Handle, obj.Handle);
+            if (status == NtStatus.STATUS_NOT_SAME_OBJECT)
             {
-                string name = FullPath;
-                if (name == @"\")
-                {
-                    return String.Empty;
-                }
+                return false;
+            }
+            status.ToNtException();
+            return true;
+        }
 
-                int index = name.LastIndexOf('\\');
-                if (index >= 0)
-                {
-                    return name.Substring(index + 1);
-                }
-                return name;
+        /// <summary>
+        /// Check if this object is exactly the same as another.
+        /// </summary>
+        /// <param name="obj">The object to compare against.</param>
+        /// <returns>True if this is the same object.</returns>
+        /// <exception cref="NtException">Thrown on error.</exception>
+        /// <remarks>This function can be slow to run and unreliable. Use CompareObject is Windows 10 or above.</remarks>
+        public bool SameObject(NtObject obj)
+        {
+            if (NtObjectUtils.SupportedVersion >= SupportedVersion.Windows10)
+            {
+                return CompareObject(obj);
+            }
+            else
+            {
+                NtSystemInfo.ResolveObjectAddress(this, obj);
+                return Address == obj.Address;
             }
         }
 
@@ -865,22 +749,52 @@ namespace NtApiDotNet
             return Name;
         }
 
+        #endregion
+
+        #region Public Properties
+
         /// <summary>
-        /// Check if this object is exactly the same as another.
+        /// Get full path to the object
         /// </summary>
-        /// <param name="obj">The object to compare against.</param>
-        /// <returns>True if this is the same object.</returns>
-        /// <exception cref="NtException">Thrown on error.</exception>
-        public bool SameObject(NtObject obj)
-        {
-            NtStatus status = NtSystemCalls.NtCompareObjects(Handle, obj.Handle);
-            if (status == NtStatus.STATUS_NOT_SAME_OBJECT)
-            {
-                return false;
-            }
-            status.ToNtException();
-            return true;
-        }
+        public virtual string FullPath => GetName(Handle);
+
+        /// <summary>
+        /// Get the granted access as an unsigned integer
+        /// </summary>
+        public AccessMask GrantedAccessMask => _basic_information.DesiredAccess;
+
+        /// <summary>
+        /// Get the security descriptor, with Dacl, Owner, Group and Label
+        /// </summary>
+        public SecurityDescriptor SecurityDescriptor => GetSecurityDescriptor(SecurityInformation.AllBasic);
+
+        /// <summary>
+        /// Get the security descriptor as an SDDL string
+        /// </summary>
+        /// <returns>The security descriptor as an SDDL string</returns>
+        public string Sddl => GetSddl();
+
+        /// <summary>
+        /// The low-level handle to the object.
+        /// </summary>
+        public SafeKernelObjectHandle Handle { get; private set; }
+
+        /// <summary>
+        /// Get the NT type name for this object.
+        /// </summary>
+        /// <returns>The NT type name.</returns>
+        public string NtTypeName => Handle.NtTypeName;
+
+        /// <summary>
+        /// Get the NtType for this object.
+        /// </summary>
+        /// <returns>The NtType for the type name</returns>
+        public NtType NtType => NtType.GetTypeByName(NtTypeName, true);
+
+        /// <summary>
+        /// Get the name of the object
+        /// </summary>
+        public string Name => NtObjectUtils.GetFileName(FullPath);
 
         /// <summary>
         /// Indicates if the handle can be used for synchronization.
@@ -890,61 +804,30 @@ namespace NtApiDotNet
         /// <summary>
         /// Get object creation time.
         /// </summary>
-        public DateTime CreationTime
-        {
-            get
-            {
-                return DateTime.FromFileTime(_basic_information.CreationTime.QuadPart);
-            }
-        }
+        public DateTime CreationTime => DateTime.FromFileTime(_basic_information.CreationTime.QuadPart);
 
         /// <summary>
         /// Get the attribute flags for the object.
         /// </summary>
-        public AttributeFlags AttributesFlags
-        {
-            get
-            {
-                return _basic_information.Attributes;
-            }
-        }
+        public AttributeFlags AttributesFlags => _basic_information.Attributes;
 
         /// <summary>
         /// Get number of handles for this object.
         /// </summary>
-        public int HandleReferenceCount
-        {
-            get
-            {
-                return QueryBasicInformation(Handle).HandleCount;
-            }
-        }
+        public int HandleReferenceCount => QueryBasicInformation(Handle).HandleCount;
 
         /// <summary>
         /// Get reference count for this object.
         /// </summary>
-        public int PointerReferenceCount
-        {
-            get
-            {
-                return QueryBasicInformation(Handle).ReferenceCount;
-            }
-        }
-        
+        public int PointerReferenceCount => QueryBasicInformation(Handle).ReferenceCount;
+
         /// <summary>
         /// Get or set whether the handle is inheritable.
         /// </summary>
         public bool Inherit
         {
-            get
-            {
-                return Handle.Inherit;
-            }
-
-            set
-            {
-                Handle.Inherit = value;
-            }
+            get => Handle.Inherit;
+            set => Handle.Inherit = value;
         }
 
         /// <summary>
@@ -952,33 +835,27 @@ namespace NtApiDotNet
         /// </summary>
         public bool ProtectFromClose
         {
-            get
-            {
-                return Handle.ProtectFromClose;
-            }
-
-            set
-            {
-                Handle.ProtectFromClose = value;
-            }
+            get => Handle.ProtectFromClose;
+            set => Handle.ProtectFromClose = value;
         }
 
         /// <summary>
         /// Get the object's address is kernel memory.
         /// </summary>
         /// <remarks>As getting the address is expensive you need to pass the object to NtSystemInfo::ResolveObjectAddress to intialize.</remarks>
-        public ulong Address
-        {
-            get
-            {
-                return _address;
-            }
+        public ulong Address { get; internal set; }
 
-            internal set
-            {
-                _address = value;
-            }
-        }
+        /// <summary>
+        /// Returns whether this object is a container.
+        /// </summary>
+        public virtual bool IsContainer => false;
+
+        /// <summary>
+        /// Returns whether this object is closed.
+        /// </summary>
+        public bool IsClosed => Handle.IsClosed;
+
+        #endregion
 
         #region IDisposable Support
         private bool disposedValue = false;
@@ -991,7 +868,10 @@ namespace NtApiDotNet
         {
             if (!disposedValue)
             {
-                Handle.Close();
+                if (!Handle.PseudoHandle)
+                {
+                    Handle.Close();
+                }
                 disposedValue = true;
             }
         }
@@ -1009,7 +889,7 @@ namespace NtApiDotNet
         /// </summary>
         public void Dispose()
         {
-            Dispose(true);         
+            Dispose(true);
             GC.SuppressFinalize(this);
         }
 
@@ -1021,636 +901,5 @@ namespace NtApiDotNet
             Dispose();
         }
         #endregion
-    }
-
-    /// <summary>
-    /// A derived class to add some useful functions such as Duplicate
-    /// </summary>
-    /// <typeparam name="O">The derived type to use as return values</typeparam>
-    /// <typeparam name="A">An enum which represents the access mask values for the type</typeparam>
-    public abstract class NtObjectWithDuplicate<O, A> : NtObject where O : NtObject where A : struct, IConvertible
-    {
-        internal NtObjectWithDuplicate(SafeKernelObjectHandle handle) : base(handle)
-        {
-            if (!typeof(A).IsEnum)
-                throw new ArgumentException("Type of access must be an enum");
-        }
-
-        private static O Create(params object[] ps)
-        {
-            return (O)Activator.CreateInstance(typeof(O), BindingFlags.NonPublic | BindingFlags.Instance, null, ps, null);
-        }
-
-        private static GenericAccessRights ToGenericAccess(IConvertible conv)
-        {
-            return (GenericAccessRights)conv.ToUInt32(null);
-        }
-
-        /// <summary>
-        /// Reopen object with different access rights.
-        /// </summary>
-        /// <param name="desired_access">The desired access.</param>
-        /// <param name="attributes">Additional attributes for open.</param>
-        /// <param name="throw_on_error">True to throw on error.</param>
-        /// <returns></returns>
-        public virtual NtResult<O> ReOpen(A desired_access, AttributeFlags attributes, bool throw_on_error)
-        {
-            if (!NtType.CanOpen)
-            {
-                throw new ArgumentException("Can't re-open this type");
-            }
-
-            using (var obj_attr = new ObjectAttributes(string.Empty, attributes, this))
-            {
-                return NtType.Open(obj_attr, ToGenericAccess(desired_access), throw_on_error).Cast<O>();
-            }
-        }
-
-        /// <summary>
-        /// Reopen object with different access rights.
-        /// </summary>
-        /// <param name="desired_access">The desired access.</param>
-        /// <param name="throw_on_error">True to throw on error.</param>
-        /// <returns></returns>
-        public virtual NtResult<O> ReOpen(A desired_access, bool throw_on_error)
-        {
-            return ReOpen(desired_access, AttributeFlags.CaseInsensitive, throw_on_error);
-        }
-
-        /// <summary>
-        /// Reopen object with different access rights.
-        /// </summary>
-        /// <param name="desired_access">The desired access.</param>
-        /// <returns></returns>
-        public O ReOpen(A desired_access)
-        {
-            return ReOpen(desired_access, true).Result;
-        }
-
-        /// <summary>
-        /// Duplicate object.
-        /// </summary>
-        /// <param name="access_rights">Access rights to duplicate with.</param>
-        /// <param name="flags">Attribute flags.</param>
-        /// <param name="options">Duplicate options</param>
-        /// <param name="throw_on_error">True to throw an exception on error.</param>
-        /// <returns>The duplicated object.</returns>
-        public sealed override NtResult<NtObject> DuplicateObject(AccessMask access_rights, AttributeFlags flags, DuplicateObjectOptions options, bool throw_on_error)
-        {
-            return Duplicate(access_rights.ToSpecificAccess<A>(), flags, options, throw_on_error).Cast<NtObject>();
-        }
-
-        /// <summary>
-        /// Duplicate object.
-        /// </summary>
-        /// <param name="access_rights">Access rights to duplicate with.</param>
-        /// <param name="flags">Attribute flags.</param>
-        /// <param name="options">Duplicate options</param>
-        /// <param name="throw_on_error">True to throw an exception on error.</param>
-        /// <returns>The duplicated object.</returns>
-        public NtResult<O> Duplicate(A access_rights, AttributeFlags flags, DuplicateObjectOptions options, bool throw_on_error)
-        {
-            return DuplicateHandle(NtProcess.Current, Handle, NtProcess.Current, ToGenericAccess(access_rights), flags, options, throw_on_error).Map(h => ShallowClone(h, true));
-        }
-
-        /// <summary>
-        /// Duplicate the object with specific access rights
-        /// </summary>
-        /// <param name="access">The access rights for the new handle</param>
-        /// <returns>The duplicated object</returns>
-        public O Duplicate(A access)
-        {
-            return Duplicate(access, AttributeFlags.None, DuplicateObjectOptions.None, true).Result;
-        }
-
-        /// <summary>
-        /// Duplicate the object with same access rights
-        /// </summary>
-        /// <returns>The duplicated object</returns>
-        public O Duplicate()
-        {
-            return Duplicate(default(A), AttributeFlags.None, DuplicateObjectOptions.SameAccess, true).Result;
-        }
-
-        private O ShallowClone(SafeKernelObjectHandle handle, bool query_basic_info)
-        {
-            O ret = (O)MemberwiseClone();
-            ret.SetHandle(handle, query_basic_info);
-            return ret;
-        }
-
-        // Get a shallow clone where the handle isn't owned.
-        internal O ShallowClone()
-        {
-            return ShallowClone(new SafeKernelObjectHandle(Handle.DangerousGetHandle(), false), false);
-        }
-
-        private A UIntToAccess(GenericAccessRights access)
-        {
-            return (A)Enum.ToObject(typeof(A), (uint)access);
-        }
-
-        /// <summary>
-        /// Get granted access for handle.
-        /// </summary>
-        /// <returns>Granted access</returns>
-        public A GrantedAccess
-        {
-            get
-            {
-                return GrantedAccessMask.ToSpecificAccess<A>();
-            }
-        }
-
-        /// <summary>
-        /// Get the maximum permission access for this object based on a token
-        /// and it's security descriptor.
-        /// </summary>
-        /// <param name="token">The token to check against.</param>
-        /// <returns>Returns 0 if can't read the security descriptor.</returns>
-        public A GetMaximumAccess(NtToken token)
-        {
-            if (!IsAccessMaskGranted(GenericAccessRights.ReadControl))
-            {
-                return default(A);
-            }
-
-            return NtSecurity.GetMaximumAccess(SecurityDescriptor,
-                                    token, NtType.GenericMapping).ToSpecificAccess<A>();
-        }
-
-        /// <summary>
-        /// Get the maximum permission access for this object based on the current token
-        /// and its security descriptor.
-        /// </summary>
-        /// <returns>Returns 0 if can't read the security descriptor.</returns>
-        public A GetMaximumAccess()
-        {
-            using (NtToken token = NtToken.OpenProcessToken())
-            {
-                return GetMaximumAccess(token);
-            }
-        }
-
-        /// <summary>
-        /// Check if a specific set of access rights is granted
-        /// </summary>
-        /// <param name="access">The access rights to check</param>
-        /// <returns>True if all access rights are granted</returns>
-        public bool IsAccessGranted(A access)
-        {
-            return IsAccessMaskGranted(ToGenericAccess(access));
-        }
-
-        /// <summary>
-        /// Create a new instance from a kernel handle
-        /// </summary>
-        /// <param name="handle">The kernel handle</param>
-        /// <returns>The new typed instance</returns>
-        public static O FromHandle(SafeKernelObjectHandle handle)
-        {
-            return Create(handle);
-        }
-
-        /// <summary>
-        /// Create a new instance from a kernel handle
-        /// </summary>
-        /// <param name="handle">The kernel handle</param>
-        /// <param name="owns_handle">True to own the handle.</param>
-        /// <returns>The new typed instance</returns>
-        public static O FromHandle(IntPtr handle, bool owns_handle)
-        {
-            return FromHandle(new SafeKernelObjectHandle(handle, owns_handle));
-        }
-
-        /// <summary>
-        /// Create a new instance from a kernel handle.
-        /// </summary>
-        /// <param name="handle">The kernel handle</param>
-        /// <remarks>The call doesn't own the handle. The returned object can't be used to close the handle.</remarks>
-        /// <returns>The new typed instance</returns>
-        public static O FromHandle(IntPtr handle)
-        {
-            return FromHandle(handle, false);
-        }
-
-        /// <summary>
-        /// Duplicate an instance from a process
-        /// </summary>
-        /// <param name="process">The process (with DupHandle access)</param>
-        /// <param name="handle">The handle value to duplicate</param>
-        /// <param name="access">The access rights to duplicate with</param>
-        /// <param name="options">The options for duplication.</param>
-        /// <param name="throw_on_error">True to throw an exception on error.</param>
-        /// <returns>The NT status code and object result.</returns>
-        public static NtResult<O> DuplicateFrom(NtProcess process, IntPtr handle, 
-            A access, DuplicateObjectOptions options, bool throw_on_error)
-        {
-            return NtObject.DuplicateHandle(process, new SafeKernelObjectHandle(handle, false), 
-                NtProcess.Current, ToGenericAccess(access), AttributeFlags.None,
-                options, throw_on_error).Map(h => FromHandle(h));
-        }
-
-        /// <summary>
-        /// Duplicate an instance from a process
-        /// </summary>
-        /// <param name="pid">The process ID</param>
-        /// <param name="handle">The handle value to duplicate</param>
-        /// <param name="access">The access rights to duplicate with</param>
-        /// <param name="options">The options for duplication.</param>
-        /// <param name="throw_on_error">True to throw an exception on error.</param>
-        /// <returns>The NT status code and object result.</returns>
-        public static NtResult<O> DuplicateFrom(int pid, IntPtr handle,
-            A access, DuplicateObjectOptions options, bool throw_on_error)
-        {
-            using (var process = NtProcess.Open(pid, ProcessAccessRights.DupHandle, throw_on_error))
-            {
-                if (!process.IsSuccess)
-                {
-                    return new NtResult<O>(process.Status, default(O));
-                }
-
-                return DuplicateFrom(process.Result, handle, access, options, throw_on_error);
-            }
-        }
-
-        /// <summary>
-        /// Duplicate an instance from a process with a specified access rights.
-        /// </summary>
-        /// <param name="process">The process (with DupHandle access)</param>
-        /// <param name="handle">The handle value to duplicate</param>
-        /// <param name="access">The access rights to duplicate.</param>
-        /// <returns>The duplicated handle</returns>
-        public static O DuplicateFrom(NtProcess process, IntPtr handle, A access)
-        {
-            return DuplicateFrom(process, handle, access, 
-                DuplicateObjectOptions.None, true).Result;
-        }
-
-        /// <summary>
-        /// Duplicate an instance from a process
-        /// </summary>
-        /// <param name="pid">The process ID</param>
-        /// <param name="handle">The handle value to duplicate</param>
-        /// <param name="access">The access rights to duplicate with</param>
-        /// <returns>The duplicated handle</returns>
-        public static O DuplicateFrom(int pid, IntPtr handle, A access)
-        {
-            return DuplicateFrom(pid, handle, access,
-                DuplicateObjectOptions.None, true).Result;
-        }
-
-        /// <summary>
-        /// Duplicate an instance from a process with same access rights.
-        /// </summary>
-        /// <param name="process">The process (with DupHandle access)</param>
-        /// <param name="handle">The handle value to duplicate</param>
-        /// <returns>The duplicated object.</returns>
-        public static O DuplicateFrom(NtProcess process, IntPtr handle)
-        {
-            return DuplicateFrom(process, handle, default(A), DuplicateObjectOptions.SameAccess, true).Result;
-        }
-
-        /// <summary>
-        /// Duplicate an instance from a process with same access rights
-        /// </summary>
-        /// <param name="pid">The process ID</param>
-        /// <param name="handle">The handle value to duplicate</param>
-        /// <returns>The duplicated handle</returns>
-        public static O DuplicateFrom(int pid, IntPtr handle)
-        {
-            return DuplicateFrom(pid, handle, default(A), DuplicateObjectOptions.SameAccess, true).Result;
-        }
-
-        /// <summary>
-        /// Duplicate an instance from current process to an other process
-        /// </summary>
-        /// <param name="process">The destination process (with DupHandle access)</param>
-        /// <param name="access">The access rights to duplicate with</param>
-        /// <param name="options">The options for duplication.</param>
-        /// <param name="throw_on_error">True to throw an exception on error.</param>
-        /// <returns>The NT status code and object result.</returns>
-        public NtResult<IntPtr> DuplicateTo(NtProcess process, 
-            A access, DuplicateObjectOptions options, bool throw_on_error)
-        {
-            return DuplicateTo(process, Handle,
-                access, options, throw_on_error);
-        }
-
-        /// <summary>
-        /// Duplicate an instance from current process to an other process
-        /// </summary>
-        /// <param name="process">The destination process (with DupHandle access)</param>
-        /// <param name="handle">The handle value to duplicate</param>
-        /// <param name="access">The access rights to duplicate with</param>
-        /// <param name="options">The options for duplication.</param>
-        /// <param name="throw_on_error">True to throw an exception on error.</param>
-        /// <returns>The NT status code and object result.</returns>
-        public static NtResult<IntPtr> DuplicateTo(NtProcess process, SafeKernelObjectHandle handle,
-            A access, DuplicateObjectOptions options, bool throw_on_error)
-        {
-            return DuplicateHandle(NtProcess.Current, handle.DangerousGetHandle(),
-                process, ToGenericAccess(access), AttributeFlags.None,
-                options, throw_on_error);
-        }
-
-        /// <summary>
-        /// Duplicate an instance from current process to an other process
-        /// </summary>
-        /// <param name="pid">The destination process ID</param>
-        /// <param name="handle">The handle value to duplicate</param>
-        /// <param name="access">The access rights to duplicate with</param>
-        /// <param name="options">The options for duplication.</param>
-        /// <param name="throw_on_error">True to throw an exception on error.</param>
-        /// <returns>The NT status code and object result.</returns>
-        public static NtResult<IntPtr> DuplicateTo(int pid, SafeKernelObjectHandle handle,
-            A access, DuplicateObjectOptions options, bool throw_on_error)
-        {
-            using (var process = NtProcess.Open(pid, ProcessAccessRights.DupHandle, throw_on_error))
-            {
-                if (!process.IsSuccess)
-                {
-                    return new NtResult<IntPtr>(process.Status, IntPtr.Zero);
-                }
-
-                return DuplicateTo(process.Result, handle, access, options, throw_on_error);
-            }
-        }
-
-        /// <summary>
-        /// Duplicate an instance from current process to an other process with a specified access rights.
-        /// </summary>
-        /// <param name="process">The destination process (with DupHandle access)</param>
-        /// <param name="handle">The handle value to duplicate</param>
-        /// <param name="access">The access rights to duplicate.</param>
-        /// <returns>The duplicated handle</returns>
-        public static IntPtr DuplicateTo(NtProcess process, SafeKernelObjectHandle handle, A access)
-        {
-            return DuplicateTo(process, handle, access,
-                DuplicateObjectOptions.None, true).Result;
-        }
-
-        /// <summary>
-        /// Duplicate an instance from current process to an other process
-        /// </summary>
-        /// <param name="pid">The destination process ID</param>
-        /// <param name="handle">The handle value to duplicate</param>
-        /// <param name="access">The access rights to duplicate with</param>
-        /// <returns>The duplicated handle</returns>
-        public static IntPtr DuplicateTo(int pid, SafeKernelObjectHandle handle, A access)
-        {
-            return DuplicateTo(pid, handle, access,
-                DuplicateObjectOptions.None, true).Result;
-        }
-
-        /// <summary>
-        /// Duplicate an instance from current process to an other process with same access rights.
-        /// </summary>
-        /// <param name="process">The destination process (with DupHandle access)</param>
-        /// <param name="handle">The handle value to duplicate</param>
-        /// <returns>The duplicated object.</returns>
-        public static IntPtr DuplicateTo(NtProcess process, SafeKernelObjectHandle handle)
-        {
-            return DuplicateTo(process, handle, default(A), DuplicateObjectOptions.SameAccess, true).Result;
-        }
-
-        /// <summary>
-        /// Duplicate an instance from current process to an other process with same access rights.
-        /// </summary>
-        /// <param name="process">The destination process (with DupHandle access)</param>
-        /// <returns>The duplicated object.</returns>
-        public IntPtr DuplicateTo(NtProcess process)
-        {
-            return DuplicateTo(process, Handle);
-        }
-
-        /// <summary>
-        /// Duplicate an instance from current process to an other process with same access rights
-        /// </summary>
-        /// <param name="pid">The destination process ID</param>
-        /// <param name="handle">The handle value to duplicate</param>
-        /// <returns>The duplicated handle</returns>
-        public static IntPtr DuplicateTo(int pid, SafeKernelObjectHandle handle)
-        {
-            return DuplicateTo(pid, handle, default(A), DuplicateObjectOptions.SameAccess, true).Result;
-        }
-
-        /// <summary>
-        /// Duplicate an instance from current process to an other process with same access rights
-        /// </summary>
-        /// <param name="pid">The destination process ID</param>
-        /// <returns>The duplicated handle</returns>
-        public IntPtr DuplicateTo(int pid)
-        {
-            return DuplicateTo(pid, Handle);
-        }
-
-        /// <summary>
-        /// Duplicate an instance from a process to an other process
-        /// </summary>
-        /// <param name="src_process">The source process (with DupHandle access)</param>
-        /// <param name="handle">The handle value to duplicate</param>
-        /// <param name="dst_process">The destination process (with DupHandle access)</param>
-        /// <param name="access">The access rights to duplicate with</param>
-        /// <param name="options">The options for duplication.</param>
-        /// <param name="throw_on_error">True to throw an exception on error.</param>
-        /// <returns>The NT status code and object result.</returns>
-        public static NtResult<IntPtr> DuplicateTo(NtProcess src_process, IntPtr handle, NtProcess dst_process,
-            A access, DuplicateObjectOptions options, bool throw_on_error)
-        {
-            return NtObject.DuplicateHandle(src_process, handle,
-                dst_process, ToGenericAccess(access), AttributeFlags.None,
-                options, throw_on_error);
-        }
-
-        /// <summary>
-        /// Duplicate an instance from a process to an other process
-        /// </summary>
-        /// <param name="src_pid">The source process ID</param>
-        /// <param name="handle">The handle value to duplicate</param>
-        /// <param name="dst_pid">The destination process ID</param>
-        /// <param name="access">The access rights to duplicate with</param>
-        /// <param name="options">The options for duplication.</param>
-        /// <param name="throw_on_error">True to throw an exception on error.</param>
-        /// <returns>The NT status code and object result.</returns>
-        public static NtResult<IntPtr> DuplicateTo(int src_pid, IntPtr handle, int dst_pid,
-            A access, DuplicateObjectOptions options, bool throw_on_error)
-        {
-            using (var src_process = NtProcess.Open(src_pid, ProcessAccessRights.DupHandle, throw_on_error))
-            {
-                if (!src_process.IsSuccess)
-                {
-                    return new NtResult<IntPtr>(src_process.Status, IntPtr.Zero);
-                }
-
-                using (var dst_process = NtProcess.Open(dst_pid, ProcessAccessRights.DupHandle, throw_on_error))
-                {
-                    if (!dst_process.IsSuccess)
-                    {
-                        return new NtResult<IntPtr>(dst_process.Status, IntPtr.Zero);
-                    }
-
-                    return DuplicateTo(src_process.Result, handle, dst_process.Result, access, options, throw_on_error);
-                }
-            }
-        }
-
-        /// <summary>
-        /// Duplicate an instance from a process to an other process with a specified access rights.
-        /// </summary>
-        /// <param name="src_process">The source process (with DupHandle access)</param>
-        /// <param name="handle">The handle value to duplicate</param>
-        /// <param name="dst_process">The destination process (with DupHandle access)</param>
-        /// <param name="access">The access rights to duplicate.</param>
-        /// <returns>The duplicated handle</returns>
-        public static IntPtr DuplicateTo(NtProcess src_process, IntPtr handle, NtProcess dst_process, A access)
-        {
-            return DuplicateTo(src_process, handle, dst_process, access,
-                DuplicateObjectOptions.None, true).Result;
-        }
-
-        /// <summary>
-        /// Duplicate an instance from a process to an other process
-        /// </summary>
-        /// <param name="src_pid">The source process ID</param>
-        /// <param name="handle">The handle value to duplicate</param>
-        /// <param name="dst_pid">The destination process ID</param>
-        /// <param name="access">The access rights to duplicate with</param>
-        /// <returns>The duplicated handle</returns>
-        public static IntPtr DuplicateTo(int src_pid, IntPtr handle, int dst_pid, A access)
-        {
-            return DuplicateTo(src_pid, handle, dst_pid, access,
-                DuplicateObjectOptions.None, true).Result;
-        }
-
-        /// <summary>
-        /// Duplicate an instance from a process to an other process with same access rights.
-        /// </summary>
-        /// <param name="src_process">The source process (with DupHandle access)</param>
-        /// <param name="handle">The handle value to duplicate</param>
-        /// <param name="dst_process">The destination process (with DupHandle access)</param>
-        /// <returns>The duplicated object.</returns>
-        public static IntPtr DuplicateTo(NtProcess src_process, IntPtr handle, NtProcess dst_process)
-        {
-            return DuplicateTo(src_process, handle, dst_process, default(A), DuplicateObjectOptions.SameAccess, true).Result;
-        }
-
-        /// <summary>
-        /// Duplicate an instance from a process to an other process with same access rights
-        /// </summary>
-        /// <param name="src_pid">The source process ID</param>
-        /// <param name="handle">The handle value to duplicate</param>
-        /// <param name="dst_pid">The destination process ID</param>
-        /// <returns>The duplicated handle</returns>
-        public static IntPtr DuplicateTo(int src_pid, IntPtr handle, int dst_pid)
-        {
-            return DuplicateTo(src_pid, handle, dst_pid, default(A), DuplicateObjectOptions.SameAccess, true).Result;
-        }
-    }
-
-    /// <summary>
-    /// A generic wrapper for any object, used if we don't know the type ahead of time.
-    /// </summary>
-    public class NtGeneric : NtObjectWithDuplicate<NtGeneric, GenericAccessRights>
-    {
-        internal NtGeneric(SafeKernelObjectHandle handle) : base(handle)
-        {
-        }
-
-        /// <summary>
-        /// Convert the generic object to the best typed object.
-        /// </summary>
-        /// <returns>The typed object. Can be NtGeneric if no better type is known.</returns>
-        public NtObject ToTypedObject()
-        {
-            return NtType.FromHandle(DuplicateHandle(Handle));
-        }
-    }
-
-    /// <summary>
-    /// A structure to return the result of an NT system call with status.
-    /// This allows a function to return both a status code and a result
-    /// without having to resort to out parameters.
-    /// </summary>
-    /// <typeparam name="T">The result type.</typeparam>
-    public struct NtResult<T> : IDisposable
-    {
-        private T _result;
-
-        /// <summary>
-        /// The NT status code.
-        /// </summary>
-        public NtStatus Status { get; private set; }
-        /// <summary>
-        /// The result of the NT call.
-        /// </summary>
-        public T Result
-        {
-            get
-            {
-                System.Diagnostics.Debug.Assert(Status.IsSuccess());
-                return _result;
-            }
-        }
-        /// <summary>
-        /// Get the result object or throw an exception if status code is an error.
-        /// </summary>
-        /// <returns>The result NT result.</returns>
-        /// <exception cref="NtException">Thrown if status code is an error.</exception>
-        public T GetResultOrThrow()
-        {
-            Status.ToNtException();
-            return Result;
-        }
-
-        /// <summary>
-        /// Is the result successful.
-        /// </summary>
-        public bool IsSuccess
-        {
-            get
-            {
-                return Status.IsSuccess();
-            }
-        }
-
-        /// <summary>
-        /// Map result to a different type.
-        /// </summary>
-        /// <typeparam name="S">The different type to map to.</typeparam>
-        /// <param name="map_func">A function to map the result.</param>
-        /// <returns>The mapped result.</returns>
-        public NtResult<S> Map<S>(Func<T, S> map_func)
-        {
-            if (IsSuccess)
-            {
-                return new NtResult<S>(Status, map_func(Result));
-            }
-            return new NtResult<S>(Status, default(S));
-        }
-
-        /// <summary>
-        /// Cast result to a different type.
-        /// </summary>
-        /// <typeparam name="S">The different type to cast to.</typeparam>
-        /// <returns>The mapped result.</returns>
-        public NtResult<S> Cast<S>()
-        {
-            return Map<S>(d => (S)(object)d);
-        }
-
-        /// <summary>
-        /// Dispose result.
-        /// </summary>
-        public void Dispose()
-        {
-            using (_result as IDisposable) { }
-        }
-
-        internal NtResult(NtStatus status, T result)
-        {
-            Status = status;
-            _result = result;
-        }
     }
 }

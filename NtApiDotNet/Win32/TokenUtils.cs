@@ -12,6 +12,7 @@
 //  See the License for the specific language governing permissions and
 //  limitations under the License.
 
+using NtApiDotNet.Win32.Security.Native;
 using System;
 using System.Collections.Generic;
 using System.Runtime.InteropServices;
@@ -65,7 +66,7 @@ namespace NtApiDotNet.Win32
                     throw new ArgumentException("Invalid logon type for S4U");
             }
 
-            return LogonUtils.LogonS4U(user, realm, logon_type);
+            return LogonUtils.LsaLogonS4U(user, realm, logon_type);
         }
 
         /// <summary>
@@ -101,6 +102,22 @@ namespace NtApiDotNet.Win32
         /// <returns>The logged on token.</returns>
         public static NtToken GetLogonUserToken(string username, string domain, string password, SecurityLogonType logon_type, IEnumerable<UserGroup> groups)
         {
+            return GetLogonUserToken(username, domain, password, logon_type, Logon32Provider.Default, groups);
+        }
+
+        /// <summary>
+        /// Logon a user.
+        /// </summary>
+        /// <param name="username">The username.</param>
+        /// <param name="domain">The user's domain.</param>
+        /// <param name="password">The user's password.</param>
+        /// <param name="logon_type">The logon token's type.</param>
+        /// <param name="groups">Optional list of additonal groups to add.</param>
+        /// <param name="provider">The Logon provider.</param>
+        /// <returns>The logged on token.</returns>
+        public static NtToken GetLogonUserToken(string username, string domain, string password, SecurityLogonType logon_type, 
+            Logon32Provider provider, IEnumerable<UserGroup> groups)
+        {
             switch (logon_type)
             {
                 case SecurityLogonType.Batch:
@@ -116,26 +133,37 @@ namespace NtApiDotNet.Win32
 
             if (groups != null)
             {
-                return LogonUtils.Logon(username, domain, password, logon_type, groups);
+                return LogonUtils.Logon(username, domain, password, logon_type, provider, groups);
             }
             else
             {
-                return LogonUtils.Logon(username, domain, password, logon_type);
+                return LogonUtils.Logon(username, domain, password, logon_type, provider);
             }
         }
 
-        [DllImport("user32.dll", SetLastError=true)]
-        private static extern bool GetClipboardAccessToken(out SafeKernelObjectHandle handle, TokenAccessRights desired_access);
-
         private static SafeKernelObjectHandle OpenClipboardToken(TokenAccessRights desired_access)
         {
-            SafeKernelObjectHandle handle;
-            if (!GetClipboardAccessToken(out handle, desired_access
-                ))
+            if (!Win32NativeMethods.GetClipboardAccessToken(out SafeKernelObjectHandle handle, desired_access))
             {
                 throw new NtException(NtStatus.STATUS_NO_TOKEN);
             }
             return handle;
+        }
+
+        /// <summary>
+        /// Open the current clipboard token.
+        /// </summary>
+        /// <param name="desired_access"></param>
+        /// <param name="throw_on_error"></param>
+        /// <returns></returns>
+        public static NtResult<NtToken> OpenClipboardToken(TokenAccessRights desired_access, bool throw_on_error)
+        {
+            if (Win32NativeMethods.GetClipboardAccessToken(out SafeKernelObjectHandle handle, desired_access))
+            {
+                return NtToken.FromHandle(handle).CreateResult();
+            }
+            
+            return NtStatus.STATUS_NO_TOKEN.CreateResultFromError<NtToken>(throw_on_error);
         }
 
         /// <summary>
@@ -169,49 +197,27 @@ namespace NtApiDotNet.Win32
                 | TokenAccessRights.ReadControl);
         }
 
-        const int SAFER_LEVEL_OPEN = 1;
-
-        [Flags]
-        enum SaferScope
+        /// <summary>
+        /// Derive a package sid from a name.
+        /// </summary>
+        /// <param name="name">The name of the package.</param>
+        /// <param name="throw_on_error">True to throw on error.</param>
+        /// <returns>The derived Sid</returns>
+        public static NtResult<Sid> DerivePackageSidFromName(string name, bool throw_on_error)
         {
-            Machine = 1,
-            User = 2
+            int hr = Win32NativeMethods.DeriveAppContainerSidFromAppContainerName(name, out SafeSidBufferHandle sid);
+            if (hr == 0)
+            {
+                using (sid)
+                {
+                    Sid result = new Sid(sid);
+                    NtSecurity.CacheSidName(result, name, SidNameSource.Package);
+                    return result.CreateResult();
+                }
+            }
+
+            return ((NtStatus)hr).CreateResultFromError<Sid>(throw_on_error);
         }
-
-        [Flags]
-        enum SaferFlags
-        {
-            NullIfEqual = 1,
-            CompareOnly = 2,
-            MakeInert = 4,
-            WantFlags = 8,
-        }
-
-        [DllImport("advapi32.dll", SetLastError = true)]
-        static extern bool SaferCreateLevel(SaferScope dwScopeId, SaferLevel dwLevelId, int OpenFlags, out IntPtr pLevelHandle, IntPtr lpReserved);
-
-        [DllImport("advapi32.dll", SetLastError = true)]
-        static extern bool SaferCloseLevel(IntPtr hLevelHandle);
-
-        [DllImport("advapi32.dll", SetLastError = true)]
-        static extern bool SaferComputeTokenFromLevel(IntPtr LevelHandle, SafeHandle InAccessToken, 
-            out SafeKernelObjectHandle OutAccessToken, SaferFlags dwFlags, IntPtr lpReserved);
-
-        [DllImport("advapi32.dll", SetLastError = true)]
-        static extern IntPtr FreeSid(IntPtr sid);
-
-        [DllImport("userenv.dll", CharSet = CharSet.Unicode)]
-        static extern int DeriveAppContainerSidFromAppContainerName(
-            string pszAppContainerName,
-            out SafeSidBufferHandle ppsidAppContainerSid
-        );
-
-        [DllImport("userenv.dll", CharSet = CharSet.Unicode)]
-        static extern int DeriveRestrictedAppContainerSidFromAppContainerSidAndRestrictedName(
-            SafeSidBufferHandle psidAppContainerSid,
-            string pszRestrictedAppContainerName,
-            out SafeSidBufferHandle ppsidRestrictedAppContainerSid
-        );
 
         /// <summary>
         /// Derive a package sid from a name.
@@ -220,16 +226,32 @@ namespace NtApiDotNet.Win32
         /// <returns>The derived Sid</returns>
         public static Sid DerivePackageSidFromName(string name)
         {
-            SafeSidBufferHandle sid;
-            int hr = DeriveAppContainerSidFromAppContainerName(name, out sid);
-            if (hr != 0)
-            {
-                Marshal.ThrowExceptionForHR(hr);
-            }
+            return DerivePackageSidFromName(name, true).Result;
+        }
 
-            using (sid)
+        /// <summary>
+        /// Derive a restricted package sid from an existing pacakge sid.
+        /// </summary>
+        /// <param name="package_sid">The base package sid.</param>
+        /// <param name="restricted_name">The restricted name for the sid.</param>
+        /// <param name="throw_on_error">True to throw on error.</param>
+        /// <returns>The derived Sid.</returns>
+        public static NtResult<Sid> DeriveRestrictedPackageSidFromSid(Sid package_sid, string restricted_name, bool throw_on_error)
+        {
+            using (var sid_buf = package_sid.ToSafeBuffer())
             {
-                return new Sid(sid);
+                int hr = Win32NativeMethods.DeriveRestrictedAppContainerSidFromAppContainerSidAndRestrictedName(sid_buf,
+                    restricted_name, out SafeSidBufferHandle sid);
+                if (hr == 0)
+                {
+                    using (sid)
+                    {
+                        Sid result = new Sid(sid);
+                        NtSecurity.CacheSidName(result, $"{package_sid.Name}/{restricted_name}", SidNameSource.Package);
+                        return result.CreateResult();
+                    }
+                }
+                return ((NtStatus)hr).CreateResultFromError<Sid>(throw_on_error);
             }
         }
 
@@ -241,24 +263,11 @@ namespace NtApiDotNet.Win32
         /// <returns>The derived Sid.</returns>
         public static Sid DeriveRestrictedPackageSidFromSid(Sid package_sid, string restricted_name)
         {
-            using (var sid_buf = package_sid.ToSafeBuffer())
-            {
-                SafeSidBufferHandle sid;
-                int hr = DeriveRestrictedAppContainerSidFromAppContainerSidAndRestrictedName(sid_buf, restricted_name, out sid);                
-                if (hr != 0)
-                {
-                    Marshal.ThrowExceptionForHR(hr);
-                }
-
-                using (sid)
-                {
-                    return new Sid(sid);
-                }
-            }
+            return DeriveRestrictedPackageSidFromSid(package_sid, restricted_name, true).Result;
         }
 
         /// <summary>
-        /// Derive a restricted package sid from an existing pacakge sid.
+        /// Derive a restricted package sid from an existing package sid.
         /// </summary>
         /// <param name="base_name">The base package name.</param>
         /// <param name="restricted_name">The restricted name for the sid.</param>
@@ -282,7 +291,7 @@ namespace NtApiDotNet.Win32
             }
             else
             {
-                return TokenUtils.DerivePackageSidFromName(name);
+                return DerivePackageSidFromName(name);
             }
         }
 
@@ -295,9 +304,7 @@ namespace NtApiDotNet.Win32
         /// <returns>The safer token.</returns>
         public static NtToken GetTokenFromSaferLevel(NtToken token, SaferLevel level, bool make_inert)
         {
-            IntPtr level_handle;
-
-            if (!SaferCreateLevel(SaferScope.User, level, SAFER_LEVEL_OPEN, out level_handle, IntPtr.Zero))
+            if (!Win32NativeMethods.SaferCreateLevel(SaferScope.User, level, Win32NativeMethods.SAFER_LEVEL_OPEN, out IntPtr level_handle, IntPtr.Zero))
             {
                 throw new SafeWin32Exception();
             }
@@ -307,7 +314,8 @@ namespace NtApiDotNet.Win32
                 using (NtToken duptoken = token.Duplicate(TokenAccessRights.GenericRead | TokenAccessRights.GenericExecute))
                 {
                     SafeKernelObjectHandle handle;
-                    if (SaferComputeTokenFromLevel(level_handle, duptoken.Handle, out handle, make_inert ? SaferFlags.MakeInert : 0, IntPtr.Zero))
+                    if (Win32NativeMethods.SaferComputeTokenFromLevel(level_handle, 
+                        duptoken.Handle, out handle, make_inert ? SaferFlags.MakeInert : 0, IntPtr.Zero))
                     {
                         return NtToken.FromHandle(handle);
                     }
@@ -319,45 +327,24 @@ namespace NtApiDotNet.Win32
             }
             finally
             {
-                SaferCloseLevel(level_handle);
+                Win32NativeMethods.SaferCloseLevel(level_handle);
             }
         }
 
-        enum WTS_CONNECTSTATE_CLASS
+        /// <summary>
+        /// Get session token for a session ID.
+        /// </summary>
+        /// <param name="session_id">The session ID.</param>
+        /// <returns>The session token.</returns>
+        public static NtToken GetSessionToken(int session_id)
         {
-            WTSActive,              // User logged on to WinStation
-            WTSConnected,           // WinStation connected to client
-            WTSConnectQuery,        // In the process of connecting to client
-            WTSShadow,              // Shadowing another WinStation
-            WTSDisconnected,        // WinStation logged on without client
-            WTSIdle,                // Waiting for client to connect
-            WTSListen,              // WinStation is listening for connection
-            WTSReset,               // WinStation is being reset
-            WTSDown,                // WinStation is down due to error
-            WTSInit,                // WinStation in initialization
+            if (!Win32NativeMethods.WTSQueryUserToken(session_id, 
+                out SafeKernelObjectHandle handle))
+            {
+                throw new SafeWin32Exception();
+            }
+            return NtToken.FromHandle(handle);
         }
-
-        [StructLayout(LayoutKind.Sequential)]
-        struct WTS_SESSION_INFO
-        {
-            public int SessionId;
-            public IntPtr pWinStationName;
-            public WTS_CONNECTSTATE_CLASS State;
-        }
-
-        [DllImport("wtsapi32.dll", SetLastError = true)]
-        static extern bool WTSEnumerateSessions(
-                IntPtr hServer,
-                int Reserved,
-                int Version,
-                out IntPtr ppSessionInfo,
-                out int pCount);
-
-        [DllImport("wtsapi32.dll", SetLastError = true)]
-        static extern bool WTSQueryUserToken(int SessionId, out SafeKernelObjectHandle phToken);
-
-        [DllImport("wtsapi32.dll", SetLastError = true)]
-        static extern void WTSFreeMemory(IntPtr memory);
 
         /// <summary>
         /// Get tokens for all logged on sessions.
@@ -371,14 +358,14 @@ namespace NtApiDotNet.Win32
             int dwSessionCount = 0;
             try
             {
-                if (WTSEnumerateSessions(IntPtr.Zero, 0, 1, out pSessions, out dwSessionCount))
+                if (Win32NativeMethods.WTSEnumerateSessions(IntPtr.Zero, 0, 1, out pSessions, out dwSessionCount))
                 {
                     IntPtr current = pSessions;
                     for (int i = 0; i < dwSessionCount; ++i)
                     {
                         WTS_SESSION_INFO session_info = (WTS_SESSION_INFO)Marshal.PtrToStructure(current, typeof(WTS_SESSION_INFO));
 
-                        if (session_info.State == WTS_CONNECTSTATE_CLASS.WTSActive && WTSQueryUserToken(session_info.SessionId, out SafeKernelObjectHandle handle))
+                        if (session_info.State == ConsoleSessionConnectState.Active && Win32NativeMethods.WTSQueryUserToken(session_info.SessionId, out SafeKernelObjectHandle handle))
                         {
                             tokens.Add(NtToken.FromHandle(handle));
                         }
@@ -390,11 +377,62 @@ namespace NtApiDotNet.Win32
             {
                 if (pSessions != IntPtr.Zero)
                 {
-                    WTSFreeMemory(pSessions);
+                    Win32NativeMethods.WTSFreeMemory(pSessions);
                 }
             }
 
             return tokens;
+        }
+
+        /// <summary>
+        /// Create an AppContainer token using the CreateAppContainerToken API.
+        /// </summary>
+        /// <param name="token">The token to base the new token on. Can be null.</param>
+        /// <param name="appcontainer_sid">The AppContainer package SID.</param>
+        /// <param name="capabilities">List of capabilities.</param>
+        /// <param name="throw_on_error">True to throw on error.</param>
+        /// <returns>The appcontainer token.</returns>
+        /// <remarks>This exported function was only introduced in RS3</remarks>
+        [SupportedVersion(SupportedVersion.Windows10_RS3)]
+        public static NtResult<NtToken> CreateAppContainerToken(NtToken token, Sid appcontainer_sid, 
+            IEnumerable<Sid> capabilities, bool throw_on_error)
+        {
+            using (var resources = new DisposableList())
+            {
+                SECURITY_CAPABILITIES caps = Win32Utils.CreateSecuityCapabilities(appcontainer_sid, capabilities ?? new Sid[0], resources);
+                if (!Win32NativeMethods.CreateAppContainerToken(token.GetHandle(), ref caps, out SafeKernelObjectHandle new_token))
+                {
+                    return Win32Utils.GetLastWin32Error().CreateResultFromDosError<NtToken>(throw_on_error);
+                }
+                return NtToken.FromHandle(new_token).CreateResult();
+            }
+        }
+
+        /// <summary>
+        /// Create an AppContainer token using the CreateAppContainerToken API.
+        /// </summary>
+        /// <param name="token">The token to base the new token on. Can be null.</param>
+        /// <param name="appcontainer_sid">The AppContainer package SID.</param>
+        /// <param name="capabilities">List of capabilities.</param>
+        /// <returns>The appcontainer token.</returns>
+        /// <remarks>This exported function was only introduced in RS3</remarks>
+        public static NtToken CreateAppContainerToken(NtToken token, Sid appcontainer_sid,
+            IEnumerable<Sid> capabilities)
+        {
+            return CreateAppContainerToken(token, appcontainer_sid, capabilities, true).Result;
+        }
+
+        /// <summary>
+        /// Create an AppContainer token using the CreateAppContainerToken API.
+        /// </summary>
+        /// <param name="appcontainer_sid">The AppContainer package SID.</param>
+        /// <param name="capabilities">List of capabilities.</param>
+        /// <returns>The appcontainer token.</returns>
+        /// <remarks>This exported function was only introduced in RS3</remarks>
+        public static NtToken CreateAppContainerToken(Sid appcontainer_sid,
+            IEnumerable<Sid> capabilities)
+        {
+            return CreateAppContainerToken(null, appcontainer_sid, capabilities);
         }
     }
 }
